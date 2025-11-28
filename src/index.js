@@ -430,6 +430,167 @@ function getSession(name = null) {
 }
 
 /**
+ * Create a logger for a specific module/class/component
+ *
+ * Usage:
+ *   // With custom name
+ *   const log = si.createLogger('Database');
+ *
+ *   // With __filename (auto-extracts module name)
+ *   const log = si.createLogger(__filename);
+ *
+ *   // Then use console-style methods
+ *   log.info('Connected');
+ *   log.warn('Slow query');
+ *   log.error('Connection failed');
+ *
+ * @param {string} nameOrFilename - Session name or __filename
+ * @returns {Object} Logger object with console-compatible methods
+ */
+function createLogger(nameOrFilename) {
+    // Extract session name
+    let sessionName;
+
+    if (nameOrFilename.includes('/') || nameOrFilename.includes('\\')) {
+        // It's a file path - extract filename without extension
+        const path = require('path');
+        sessionName = path.basename(nameOrFilename, path.extname(nameOrFilename));
+        // Capitalize first letter
+        sessionName = sessionName.charAt(0).toUpperCase() + sessionName.slice(1);
+    } else {
+        // It's already a name
+        sessionName = nameOrFilename;
+    }
+
+    // Get or create session
+    const session = getInstance().getSession(sessionName);
+
+    // Return console-compatible logger object
+    return {
+        // Session name for reference
+        name: sessionName,
+        session: session,
+
+        // Console-compatible methods
+        log(...args) {
+            console.log(`[${sessionName}]`, ...args);
+            if (_connected) session.logMessage(...args);
+        },
+        info(...args) {
+            console.info(`[${sessionName}]`, ...args);
+            if (_connected) session.logMessage(...args);
+        },
+        debug(...args) {
+            console.debug(`[${sessionName}]`, ...args);
+            if (_connected) session.logDebug(...args);
+        },
+        warn(...args) {
+            console.warn(`[${sessionName}]`, ...args);
+            if (_connected) session.logWarning(...args);
+        },
+        error(...args) {
+            console.error(`[${sessionName}]`, ...args);
+            if (_connected) session.logError(...args);
+        },
+        verbose(...args) {
+            if (_connected) session.logVerbose(...args);
+        },
+        fatal(...args) {
+            console.error(`[${sessionName}] FATAL:`, ...args);
+            if (_connected) session.logFatal(...args);
+        },
+
+        // Extended methods
+        exception(err, title = null) {
+            console.error(`[${sessionName}]`, err);
+            if (_connected) session.logException(err, title);
+        },
+        object(title, obj, includePrivate = false) {
+            if (_connected) session.logObject(title, obj, includePrivate);
+        },
+        json(title, data) {
+            if (_connected) session.logJson(title, data);
+        },
+        table(title, data, columns = null) {
+            if (_connected) session.logTable(title, data, columns);
+        },
+        array(title, arr) {
+            if (_connected) session.logArray(title, arr);
+        },
+        sql(title, query) {
+            if (_connected) session.logSql(title, query);
+        },
+        html(title, content) {
+            if (_connected) session.logHtml(title, content);
+        },
+        xml(title, content) {
+            if (_connected) session.logXml(title, content);
+        },
+        binary(title, buffer) {
+            if (_connected) session.logBinary(title, buffer);
+        },
+
+        // Variables
+        value(name, value) {
+            if (_connected) session.logValue(name, value);
+        },
+        watch(name, value) {
+            if (_connected) session.watch(name, value);
+        },
+
+        // Method tracking
+        enterMethod(name) {
+            if (_connected) session.enterMethod(name);
+        },
+        leaveMethod(name) {
+            if (_connected) session.leaveMethod(name);
+        },
+        trackMethod(name) {
+            if (_connected) return session.trackMethod(name);
+            return () => {}; // No-op if not connected
+        },
+        wrapMethod(name, fn) {
+            return session.wrapMethod(name, fn);
+        },
+
+        // Timing
+        time(label) {
+            console.time(`[${sessionName}] ${label}`);
+            if (_connected) session.timeStart(label);
+        },
+        timeEnd(label) {
+            console.timeEnd(`[${sessionName}] ${label}`);
+            if (_connected) session.timeEnd(label);
+        },
+
+        // Checkpoints & counters
+        checkpoint(name = null, details = null) {
+            if (_connected) session.addCheckpoint(name, details);
+        },
+        incCounter(name) {
+            if (_connected) session.incCounter(name);
+        },
+        decCounter(name) {
+            if (_connected) session.decCounter(name);
+        },
+
+        // Control
+        clear() {
+            if (_connected) session.clearLog();
+        },
+        separator() {
+            if (_connected) session.logSeparator();
+        },
+
+        // Assert
+        assert(condition, message) {
+            console.assert(condition, `[${sessionName}]`, message);
+            if (_connected) session.logAssert(condition, message);
+        }
+    };
+}
+
+/**
  * Set the log level
  */
 function setLevel(level) {
@@ -502,6 +663,7 @@ module.exports = {
 
     // Session management
     getSession,
+    createLogger,
     setLevel,
     getInstance,
 

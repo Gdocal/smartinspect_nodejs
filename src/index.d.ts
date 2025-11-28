@@ -437,5 +437,63 @@ export function getSession(name?: string): Session;
 export function setLevel(level: Level | string): void;
 export function getInstance(): SmartInspect;
 
+/**
+ * Logger interface returned by createLogger
+ */
+export interface Logger {
+    name: string;
+    session: Session;
+
+    // Console-compatible methods
+    log(...args: any[]): void;
+    info(...args: any[]): void;
+    debug(...args: any[]): void;
+    warn(...args: any[]): void;
+    error(...args: any[]): void;
+    verbose(...args: any[]): void;
+    fatal(...args: any[]): void;
+
+    // Extended methods
+    exception(err: Error, title?: string): void;
+    object(title: string, obj: object, includePrivate?: boolean): void;
+    json(title: string, data: any): void;
+    table(title: string, data: object[], columns?: string[]): void;
+    array(title: string, arr: any[]): void;
+    sql(title: string, query: string): void;
+    html(title: string, content: string): void;
+    xml(title: string, content: string): void;
+    binary(title: string, buffer: Buffer): void;
+
+    // Variables
+    value(name: string, value: any): void;
+    watch(name: string, value: any): void;
+
+    // Method tracking
+    enterMethod(name: string): void;
+    leaveMethod(name: string): void;
+    trackMethod(name: string): () => void;
+    wrapMethod<T extends (...args: any[]) => any>(name: string, fn: T): T;
+
+    // Timing
+    time(label: string): void;
+    timeEnd(label: string): void;
+
+    // Checkpoints & counters
+    checkpoint(name?: string, details?: string): void;
+    incCounter(name: string): void;
+    decCounter(name: string): void;
+
+    // Control
+    clear(): void;
+    separator(): void;
+    assert(condition: boolean, message: string): void;
+}
+
+/**
+ * Create a logger for a specific module/class/component
+ * @param nameOrFilename - Session name or __filename
+ */
+export function createLogger(nameOrFilename: string): Logger;
+
 // Utilities
 export function detectWindowsHost(): Promise<string>;
