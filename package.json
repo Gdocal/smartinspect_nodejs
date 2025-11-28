@@ -1,0 +1,27 @@
+{
+  "name": "smartinspect",
+  "version": "1.0.0",
+  "description": "SmartInspect logging library for Node.js - complete port of the C# library",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "scripts": {
+    "test": "node test-complete.js"
+  },
+  "keywords": [
+    "logging",
+    "smartinspect",
+    "debug",
+    "console",
+    "inspector",
+    "trace"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gdocal/smartinspect_nodejs.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
