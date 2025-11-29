@@ -18,6 +18,7 @@ class SmartInspect extends EventEmitter {
 
         this.appName = appName;
         this.hostName = os.hostname();
+        this.room = 'default'; // Room for log isolation (multi-project support)
         this.enabled = false;
         this.level = Level.Debug;
         this.defaultLevel = Level.Message;
@@ -44,12 +45,18 @@ class SmartInspect extends EventEmitter {
             options.host = await detectWindowsHost();
         }
 
+        // Set room if provided in options
+        if (options.room) {
+            this.room = options.room;
+        }
+
         this.protocol = new TcpProtocol({
             host: options.host || '127.0.0.1',
             port: options.port || 4228,
             timeout: options.timeout || 30000,
             appName: this.appName,
             hostName: this.hostName,
+            room: this.room,
             onError: (err) => this.emit('error', err),
             onConnect: (banner) => this.emit('connect', banner),
             onDisconnect: () => this.emit('disconnect')
@@ -62,7 +69,7 @@ class SmartInspect extends EventEmitter {
     }
 
     /**
-     * Parse a connection string like "tcp(host=localhost,port=4228)"
+     * Parse a connection string like "tcp(host=localhost,port=4228,room=myproject)"
      */
     parseConnectionString(str) {
         const options = {};
@@ -76,6 +83,7 @@ class SmartInspect extends EventEmitter {
                 if (key === 'host') options.host = value;
                 else if (key === 'port') options.port = parseInt(value, 10);
                 else if (key === 'timeout') options.timeout = parseInt(value, 10);
+                else if (key === 'room') options.room = value;
             }
         }
 

@@ -22,6 +22,7 @@ class TcpProtocol {
         this.timeout = options.timeout || DEFAULT_TIMEOUT;
         this.appName = options.appName || 'Node.js App';
         this.hostName = options.hostName || os.hostname();
+        this.room = options.room || 'default'; // Room for log isolation
 
         this.socket = null;
         this.connected = false;
@@ -37,7 +38,7 @@ class TcpProtocol {
      * Build LogHeader content string
      */
     buildLogHeaderContent() {
-        return `hostname=${this.hostName}\r\nappname=${this.appName}\r\n`;
+        return `hostname=${this.hostName}\r\nappname=${this.appName}\r\nroom=${this.room}\r\n`;
     }
 
     /**
