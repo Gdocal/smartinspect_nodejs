@@ -153,25 +153,31 @@ await si.connect({
 });
 ```
 
-### Named Pipes (Windows)
+### Pipe Protocol (Named Pipes / Unix Sockets)
 
-For local Windows connections, Named Pipes provide faster communication:
+For local connections, pipes provide faster IPC communication:
 
 ```javascript
+// By name (auto-detects platform-specific path)
 await si.connect({
-    pipe: 'smartinspect',  // Pipe name (connects to \\.\pipe\smartinspect)
+    pipe: 'smartinspect',  // Windows: \\.\pipe\smartinspect, Linux: /tmp/smartinspect.pipe
+    appName: 'My App'
+});
+
+// By explicit path (for custom socket locations)
+await si.connect({
+    pipePath: '/var/run/myapp/smartinspect.sock',
     appName: 'My App'
 });
 ```
-
-**Note:** Named Pipes are only available on Windows. Use TCP for cross-platform or remote connections.
 
 ### Protocol Comparison
 
 | Protocol | Use Case | Platform |
 |----------|----------|----------|
 | TCP | Remote connections, cross-platform, WSL | All |
-| Named Pipe | Local Windows, lower latency | Windows only |
+| Pipe (name) | Local IPC, lower latency | Windows (Named Pipes), Linux/Unix (Unix sockets) |
+| Pipe (path) | Custom socket location | All (explicit path) |
 
 ### WSL2 Note
 

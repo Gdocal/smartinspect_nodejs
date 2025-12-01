@@ -188,11 +188,12 @@ class TcpProtocol {
 }
 
 /**
- * PipeProtocol - handles Named Pipe connection to SmartInspect Console (Windows only)
+ * PipeProtocol - handles Named Pipe (Windows) or Unix Domain Socket (Linux/Unix) connection
  */
 class PipeProtocol {
     constructor(options = {}) {
         this.pipeName = options.pipe || DEFAULT_PIPE_NAME;
+        this.pipePath = options.pipePath || null;  // Allow explicit path override
         this.timeout = options.timeout || DEFAULT_TIMEOUT;
         this.appName = options.appName || 'Node.js App';
         this.hostName = options.hostName || os.hostname();
@@ -209,10 +210,23 @@ class PipeProtocol {
     }
 
     /**
-     * Get the full pipe path for Windows
+     * Get the full pipe path based on platform
+     * - If pipePath is explicitly set, use it directly
+     * - Windows: \\.\pipe\pipename
+     * - Linux/Unix: /tmp/pipename.pipe (Unix domain socket)
      */
     getPipePath() {
-        return `\\\\.\\pipe\\${this.pipeName}`;
+        // Allow explicit path override for custom socket locations
+        if (this.pipePath) {
+            return this.pipePath;
+        }
+
+        if (process.platform === 'win32') {
+            return `\\\\.\\pipe\\${this.pipeName}`;
+        } else {
+            // Unix domain socket path
+            return `/tmp/${this.pipeName}.pipe`;
+        }
     }
 
     /**
@@ -234,18 +248,12 @@ class PipeProtocol {
     }
 
     /**
-     * Connect to SmartInspect Console via Named Pipe
+     * Connect to SmartInspect Console via Named Pipe (Windows) or Unix Domain Socket (Linux/Unix)
      */
     connect() {
         return new Promise((resolve, reject) => {
             if (this.connected) {
                 resolve();
-                return;
-            }
-
-            // Check if we're on Windows
-            if (process.platform !== 'win32') {
-                reject(new Error('Named Pipes are only supported on Windows. Use TCP protocol instead.'));
                 return;
             }
 

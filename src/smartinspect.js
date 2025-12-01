@@ -46,10 +46,11 @@ class SmartInspect extends EventEmitter {
         }
 
         // Choose protocol based on options
-        if (options.pipe) {
-            // Use Named Pipe protocol (Windows only)
+        if (options.pipe || options.pipePath) {
+            // Use Pipe protocol (Named Pipe on Windows, Unix socket on Linux)
             this.protocol = new PipeProtocol({
                 pipe: options.pipe,
+                pipePath: options.pipePath,  // Allow explicit path override
                 timeout: options.timeout || 30000,
                 appName: this.appName,
                 hostName: this.hostName,
