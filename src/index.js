@@ -586,6 +586,11 @@ function createLogger(nameOrFilename) {
         assert(condition, message) {
             console.assert(condition, `[${sessionName}]`, message);
             if (_connected) session.logAssert(condition, message);
+        },
+
+        // Stream data
+        stream(channel, data) {
+            if (_connected) session.logStream(channel, data);
         }
     };
 }

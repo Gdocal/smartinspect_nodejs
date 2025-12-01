@@ -24,7 +24,8 @@ const PacketType = {
     LogEntry: 4,
     Watch: 5,
     ProcessFlow: 6,
-    LogHeader: 7
+    LogHeader: 7,
+    Stream: 8
 };
 
 /**

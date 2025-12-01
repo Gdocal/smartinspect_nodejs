@@ -217,6 +217,30 @@ class BinaryFormatter {
     }
 
     /**
+     * Compile a Stream packet
+     */
+    compileStream(packet) {
+        const channelBytes = this.encodeString(packet.channel);
+        const dataBytes = this.encodeString(packet.data);
+        const timestamp = this.dateToTimestamp(packet.timestamp || new Date());
+
+        // Stream binary format:
+        // [channelLen(4)] [dataLen(4)] [timestamp(8)]
+        // [channel] [data]
+
+        const parts = [
+            this.writeInt32(channelBytes ? channelBytes.length : 0),
+            this.writeInt32(dataBytes ? dataBytes.length : 0),
+            this.writeDouble(timestamp)
+        ];
+
+        if (channelBytes) parts.push(channelBytes);
+        if (dataBytes) parts.push(dataBytes);
+
+        return Buffer.concat(parts);
+    }
+
+    /**
      * Compile a packet based on its type
      */
     compile(packet) {
@@ -235,6 +259,9 @@ class BinaryFormatter {
                 break;
             case PacketType.ControlCommand:
                 this.stream = this.compileControlCommand(packet);
+                break;
+            case PacketType.Stream:
+                this.stream = this.compileStream(packet);
                 break;
             default:
                 this.stream = Buffer.alloc(0);

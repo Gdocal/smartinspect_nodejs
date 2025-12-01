@@ -873,6 +873,27 @@ class Session {
         }
     }
 
+    // ==================== Stream Data ====================
+
+    /**
+     * Send stream data to a named channel
+     * Streams are lightweight, high-frequency data channels for metrics, timeseries, etc.
+     * @param {string} channel - Channel name (e.g., 'metrics', 'cpu', 'memory')
+     * @param {any} data - Data to send (will be JSON stringified if object)
+     */
+    logStream(channel, data) {
+        if (!this.isOn(this.parent.defaultLevel)) return;
+
+        const packet = {
+            packetType: PacketType.Stream,
+            channel,
+            data: typeof data === 'string' ? data : JSON.stringify(data),
+            timestamp: new Date()
+        };
+
+        this.parent.sendPacket(packet);
+    }
+
     // ==================== Assert ====================
 
     /**
