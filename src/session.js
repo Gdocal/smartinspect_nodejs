@@ -880,14 +880,16 @@ class Session {
      * Streams are lightweight, high-frequency data channels for metrics, timeseries, etc.
      * @param {string} channel - Channel name (e.g., 'metrics', 'cpu', 'memory')
      * @param {any} data - Data to send (will be JSON stringified if object)
+     * @param {string} [type] - Optional type identifier for the stream data (e.g., 'json', 'text', 'metric')
      */
-    logStream(channel, data) {
+    logStream(channel, data, type = null) {
         if (!this.isOn(this.parent.defaultLevel)) return;
 
         const packet = {
             packetType: PacketType.Stream,
             channel,
             data: typeof data === 'string' ? data : JSON.stringify(data),
+            streamType: type || '',
             timestamp: new Date()
         };
 

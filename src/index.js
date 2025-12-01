@@ -589,8 +589,8 @@ function createLogger(nameOrFilename) {
         },
 
         // Stream data
-        stream(channel, data) {
-            if (_connected) session.logStream(channel, data);
+        stream(channel, data, type = null) {
+            if (_connected) session.logStream(channel, data, type);
         }
     };
 }

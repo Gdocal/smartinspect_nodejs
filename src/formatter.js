@@ -222,20 +222,23 @@ class BinaryFormatter {
     compileStream(packet) {
         const channelBytes = this.encodeString(packet.channel);
         const dataBytes = this.encodeString(packet.data);
+        const typeBytes = this.encodeString(packet.streamType || '');
         const timestamp = this.dateToTimestamp(packet.timestamp || new Date());
 
-        // Stream binary format:
-        // [channelLen(4)] [dataLen(4)] [timestamp(8)]
-        // [channel] [data]
+        // Stream binary format (v2 with type):
+        // [channelLen(4)] [dataLen(4)] [typeLen(4)] [timestamp(8)]
+        // [channel] [data] [type]
 
         const parts = [
             this.writeInt32(channelBytes ? channelBytes.length : 0),
             this.writeInt32(dataBytes ? dataBytes.length : 0),
+            this.writeInt32(typeBytes ? typeBytes.length : 0),
             this.writeDouble(timestamp)
         ];
 
         if (channelBytes) parts.push(channelBytes);
         if (dataBytes) parts.push(dataBytes);
+        if (typeBytes) parts.push(typeBytes);
 
         return Buffer.concat(parts);
     }
