@@ -77,6 +77,23 @@ si.watch('status', 'running');
 si.logValue('config', { debug: true });
 ```
 
+### Stream Data (High-Frequency Channels)
+
+For metrics, telemetry, and other high-frequency data:
+
+```javascript
+// Send data to a named stream channel
+si.stream('metrics', { cpu: 45.2, memory: 2048 });
+si.stream('events', 'User clicked button');
+si.stream('telemetry', { lat: 51.5, lon: -0.1 });
+```
+
+Streams are lightweight data channels ideal for:
+- Real-time metrics and performance data
+- Time-series data
+- Event streams
+- Telemetry data
+
 ### Method Tracking
 
 ```javascript
