@@ -86,6 +86,11 @@ For metrics, telemetry, and other high-frequency data:
 si.stream('metrics', { cpu: 45.2, memory: 2048 });
 si.stream('events', 'User clicked button');
 si.stream('telemetry', { lat: 51.5, lon: -0.1 });
+
+// With optional type identifier (displayed in viewer)
+si.stream('metrics', { cpu: 45.2, memory: 2048 }, 'json');
+si.stream('events', 'User logged in', 'text');
+si.stream('timeseries', { ts: Date.now(), value: 123.45 }, 'metric');
 ```
 
 Streams are lightweight data channels ideal for:
@@ -93,6 +98,8 @@ Streams are lightweight data channels ideal for:
 - Time-series data
 - Event streams
 - Telemetry data
+
+The optional third parameter `type` is a string identifier displayed in the web viewer's Type column, useful for categorizing stream data (e.g., 'json', 'text', 'metric', 'error').
 
 ### Method Tracking
 
