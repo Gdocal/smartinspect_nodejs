@@ -5,7 +5,7 @@
 
 const os = require('os');
 const { EventEmitter } = require('events');
-const { TcpProtocol, detectWindowsHost } = require('./protocol');
+const { TcpProtocol, PipeProtocol, detectWindowsHost } = require('./protocol');
 const { Session } = require('./session');
 const { Level } = require('./enums');
 
@@ -40,27 +40,43 @@ class SmartInspect extends EventEmitter {
             options = this.parseConnectionString(options);
         }
 
-        // Auto-detect Windows host if in WSL and no host specified
-        if (!options.host) {
-            options.host = await detectWindowsHost();
-        }
-
         // Set room if provided in options
         if (options.room) {
             this.room = options.room;
         }
 
-        this.protocol = new TcpProtocol({
-            host: options.host || '127.0.0.1',
-            port: options.port || 4228,
-            timeout: options.timeout || 30000,
-            appName: this.appName,
-            hostName: this.hostName,
-            room: this.room,
-            onError: (err) => this.emit('error', err),
-            onConnect: (banner) => this.emit('connect', banner),
-            onDisconnect: () => this.emit('disconnect')
-        });
+        // Choose protocol based on options
+        if (options.pipe) {
+            // Use Named Pipe protocol (Windows only)
+            this.protocol = new PipeProtocol({
+                pipe: options.pipe,
+                timeout: options.timeout || 30000,
+                appName: this.appName,
+                hostName: this.hostName,
+                room: this.room,
+                onError: (err) => this.emit('error', err),
+                onConnect: (banner) => this.emit('connect', banner),
+                onDisconnect: () => this.emit('disconnect')
+            });
+        } else {
+            // Use TCP protocol (default)
+            // Auto-detect Windows host if in WSL and no host specified
+            if (!options.host) {
+                options.host = await detectWindowsHost();
+            }
+
+            this.protocol = new TcpProtocol({
+                host: options.host || '127.0.0.1',
+                port: options.port || 4228,
+                timeout: options.timeout || 30000,
+                appName: this.appName,
+                hostName: this.hostName,
+                room: this.room,
+                onError: (err) => this.emit('error', err),
+                onConnect: (banner) => this.emit('connect', banner),
+                onDisconnect: () => this.emit('disconnect')
+            });
+        }
 
         await this.protocol.connect();
         this.enabled = true;
@@ -70,14 +86,15 @@ class SmartInspect extends EventEmitter {
 
     /**
      * Parse a connection string like "tcp(host=localhost,port=4228,room=myproject)"
+     * or "pipe(name=smartinspect)"
      */
     parseConnectionString(str) {
         const options = {};
 
         // Match tcp(options) format
-        const match = str.match(/tcp\(([^)]+)\)/i);
-        if (match) {
-            const pairs = match[1].split(',');
+        const tcpMatch = str.match(/tcp\(([^)]+)\)/i);
+        if (tcpMatch) {
+            const pairs = tcpMatch[1].split(',');
             for (const pair of pairs) {
                 const [key, value] = pair.split('=').map(s => s.trim());
                 if (key === 'host') options.host = value;
@@ -85,6 +102,20 @@ class SmartInspect extends EventEmitter {
                 else if (key === 'timeout') options.timeout = parseInt(value, 10);
                 else if (key === 'room') options.room = value;
             }
+            return options;
+        }
+
+        // Match pipe(options) format
+        const pipeMatch = str.match(/pipe\(([^)]+)\)/i);
+        if (pipeMatch) {
+            const pairs = pipeMatch[1].split(',');
+            for (const pair of pairs) {
+                const [key, value] = pair.split('=').map(s => s.trim());
+                if (key === 'name' || key === 'pipe') options.pipe = value;
+                else if (key === 'timeout') options.timeout = parseInt(value, 10);
+                else if (key === 'room') options.room = value;
+            }
+            return options;
         }
 
         return options;

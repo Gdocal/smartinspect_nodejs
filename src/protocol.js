@@ -1,6 +1,6 @@
 /**
  * SmartInspect Protocol
- * Handles TCP connection and packet transmission
+ * Handles TCP and Named Pipe connections and packet transmission
  */
 
 const net = require('net');
@@ -11,6 +11,7 @@ const { PacketType } = require('./enums');
 const CLIENT_BANNER = 'SmartInspect Node.js Library v1.0.0\n';
 const DEFAULT_TIMEOUT = 30000;
 const ANSWER_SIZE = 2;
+const DEFAULT_PIPE_NAME = 'smartinspect';
 
 /**
  * TcpProtocol - handles TCP connection to SmartInspect Console
@@ -187,6 +188,190 @@ class TcpProtocol {
 }
 
 /**
+ * PipeProtocol - handles Named Pipe connection to SmartInspect Console (Windows only)
+ */
+class PipeProtocol {
+    constructor(options = {}) {
+        this.pipeName = options.pipe || DEFAULT_PIPE_NAME;
+        this.timeout = options.timeout || DEFAULT_TIMEOUT;
+        this.appName = options.appName || 'Node.js App';
+        this.hostName = options.hostName || os.hostname();
+        this.room = options.room || 'default';
+
+        this.socket = null;
+        this.connected = false;
+        this.formatter = new BinaryFormatter();
+
+        // Event handlers
+        this.onError = options.onError || null;
+        this.onConnect = options.onConnect || null;
+        this.onDisconnect = options.onDisconnect || null;
+    }
+
+    /**
+     * Get the full pipe path for Windows
+     */
+    getPipePath() {
+        return `\\\\.\\pipe\\${this.pipeName}`;
+    }
+
+    /**
+     * Build LogHeader content string
+     */
+    buildLogHeaderContent() {
+        return `hostname=${this.hostName}\r\nappname=${this.appName}\r\nroom=${this.room}\r\n`;
+    }
+
+    /**
+     * Send the initial LogHeader packet after connection
+     */
+    sendLogHeader() {
+        const packet = {
+            packetType: PacketType.LogHeader,
+            content: this.buildLogHeaderContent()
+        };
+        this.writePacket(packet);
+    }
+
+    /**
+     * Connect to SmartInspect Console via Named Pipe
+     */
+    connect() {
+        return new Promise((resolve, reject) => {
+            if (this.connected) {
+                resolve();
+                return;
+            }
+
+            // Check if we're on Windows
+            if (process.platform !== 'win32') {
+                reject(new Error('Named Pipes are only supported on Windows. Use TCP protocol instead.'));
+                return;
+            }
+
+            const pipePath = this.getPipePath();
+            this.socket = net.connect(pipePath);
+            this.socket.setTimeout(this.timeout);
+
+            let serverBanner = '';
+            let handshakeComplete = false;
+            let connectTimeout = null;
+
+            const cleanup = () => {
+                if (connectTimeout) {
+                    clearTimeout(connectTimeout);
+                    connectTimeout = null;
+                }
+            };
+
+            // Set connection timeout
+            connectTimeout = setTimeout(() => {
+                cleanup();
+                this.socket.destroy();
+                reject(new Error(`Connection timeout after ${this.timeout}ms`));
+            }, this.timeout);
+
+            this.socket.on('data', (data) => {
+                if (!handshakeComplete) {
+                    // Read server banner until newline
+                    serverBanner += data.toString('ascii');
+                    if (serverBanner.includes('\n')) {
+                        // Send client banner
+                        this.socket.write(CLIENT_BANNER);
+
+                        handshakeComplete = true;
+                        this.connected = true;
+
+                        // Send LogHeader
+                        this.sendLogHeader();
+
+                        cleanup();
+                        if (this.onConnect) {
+                            this.onConnect(serverBanner.trim());
+                        }
+                        resolve(serverBanner.trim());
+                    }
+                }
+                // After handshake, data is server acknowledgments (2 bytes per packet)
+            });
+
+            this.socket.on('error', (err) => {
+                cleanup();
+                this.connected = false;
+                if (this.onError) {
+                    this.onError(err);
+                }
+                reject(err);
+            });
+
+            this.socket.on('timeout', () => {
+                cleanup();
+                const err = new Error('Socket timeout');
+                if (this.onError) {
+                    this.onError(err);
+                }
+                this.socket.destroy();
+            });
+
+            this.socket.on('close', () => {
+                cleanup();
+                this.connected = false;
+                if (this.onDisconnect) {
+                    this.onDisconnect();
+                }
+            });
+        });
+    }
+
+    /**
+     * Disconnect from SmartInspect Console
+     */
+    disconnect() {
+        return new Promise((resolve) => {
+            if (this.socket) {
+                this.socket.once('close', () => {
+                    this.socket = null;
+                    this.connected = false;
+                    resolve();
+                });
+                this.socket.destroy();
+            } else {
+                resolve();
+            }
+        });
+    }
+
+    /**
+     * Write a packet to the connection
+     */
+    writePacket(packet) {
+        if (!this.connected || !this.socket) {
+            throw new Error('Not connected');
+        }
+
+        const buffer = this.formatter.format(packet);
+        if (buffer.length > 0) {
+            this.socket.write(buffer);
+        }
+    }
+
+    /**
+     * Check if connected
+     */
+    isConnected() {
+        return this.connected;
+    }
+
+    /**
+     * Reconnect (disconnect then connect)
+     */
+    async reconnect() {
+        await this.disconnect();
+        return this.connect();
+    }
+}
+
+/**
  * Auto-detect Windows host IP when running in WSL
  */
 async function detectWindowsHost() {
@@ -215,4 +400,4 @@ async function detectWindowsHost() {
     return '127.0.0.1';
 }
 
-module.exports = { TcpProtocol, detectWindowsHost };
+module.exports = { TcpProtocol, PipeProtocol, detectWindowsHost };

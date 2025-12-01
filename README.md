@@ -141,19 +141,43 @@ inspector.logTable('Results', data);
 
 ## Connection Options
 
+### TCP Protocol (Default)
+
 ```javascript
 await si.connect({
     host: '172.17.64.1',  // SmartInspect Console host
     port: 4228,           // TCP port (default: 4228)
     timeout: 30000,       // Connection timeout in ms
-    appName: 'My App'     // Application name shown in console
+    appName: 'My App',    // Application name shown in console
+    room: 'default'       // Room for log isolation (optional)
 });
 ```
 
+### Named Pipes (Windows)
+
+For local Windows connections, Named Pipes provide faster communication:
+
+```javascript
+await si.connect({
+    pipe: 'smartinspect',  // Pipe name (connects to \\.\pipe\smartinspect)
+    appName: 'My App'
+});
+```
+
+**Note:** Named Pipes are only available on Windows. Use TCP for cross-platform or remote connections.
+
+### Protocol Comparison
+
+| Protocol | Use Case | Platform |
+|----------|----------|----------|
+| TCP | Remote connections, cross-platform, WSL | All |
+| Named Pipe | Local Windows, lower latency | Windows only |
+
 ### WSL2 Note
 
-When running in WSL2 and SmartInspect Console on Windows, use the WSL gateway IP:
+When running in WSL2 and SmartInspect Console on Windows, use TCP with the WSL gateway IP:
 - Usually `172.17.64.1` or check with `ip route | grep default`
+- Named Pipes are not accessible from WSL
 
 ## TypeScript Support
 
