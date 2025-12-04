@@ -160,6 +160,45 @@ await si.connect({
 });
 ```
 
+### Resilient Connection (Enabled by Default)
+
+Backlog buffering and auto-reconnect are **enabled by default** with sensible settings:
+- `backlog.enabled: true`, `backlog.keepOpen: true`, `backlog.queue: 2048KB`
+- `reconnect: true`, `reconnectInterval: 3000ms`
+
+For non-blocking logging, just add async:
+
+```javascript
+await si.connect({
+    host: '172.17.64.1',
+
+    // Non-blocking async logging (optional)
+    async: {
+        enabled: true,      // Enable background processing
+        queue: 4096         // Max queue size in KB
+    }
+
+    // backlog and reconnect are enabled by default!
+});
+```
+
+To customize or disable:
+
+```javascript
+await si.connect({
+    host: '172.17.64.1',
+    reconnect: false,               // Disable auto-reconnect
+    reconnectInterval: 5000,        // Custom interval (default: 3000ms)
+    backlog: { enabled: false }     // Disable buffering
+});
+```
+
+### Connection String (C# Style)
+
+```javascript
+await si.connect('tcp(host=172.17.64.1,port=4228,async.enabled=true,backlog=2048,reconnect=true)');
+```
+
 ### Pipe Protocol (Named Pipes / Unix Sockets)
 
 For local connections, pipes provide faster IPC communication:

@@ -130,11 +130,71 @@ export interface Color {
     a: number;
 }
 
+/**
+ * Async scheduler options
+ */
+export interface AsyncOptions {
+    /** Enable async scheduler (default: false) */
+    enabled?: boolean;
+    /** Max async queue size in KB (default: 2048) */
+    queue?: number;
+    /** Block callers when queue full (default: false) */
+    throttle?: boolean;
+    /** Clear queue on disconnect (default: false) */
+    clearOnDisconnect?: boolean;
+}
+
+/**
+ * Backlog buffering options
+ */
+export interface BacklogOptions {
+    /** Enable packet buffering (default: true) */
+    enabled?: boolean;
+    /** Max backlog size in KB (default: 2048) */
+    queue?: number;
+    /** Log level that triggers flush (default: Level.Error) */
+    flushOn?: Level;
+    /** Keep connection open (default: true) */
+    keepOpen?: boolean;
+}
+
+/**
+ * Queue statistics for monitoring
+ */
+export interface QueueStats {
+    /** Number of packets in backlog queue */
+    backlogCount: number;
+    /** Size of backlog queue in bytes */
+    backlogSize: number;
+    /** Number of commands in scheduler queue */
+    schedulerCount: number;
+    /** Size of scheduler queue in bytes */
+    schedulerSize: number;
+}
+
 export interface ConnectOptions {
+    /** TCP host (default: auto-detect for WSL, otherwise 127.0.0.1) */
     host?: string;
+    /** TCP port (default: 4228) */
     port?: number;
+    /** Connection timeout in ms (default: 30000) */
     timeout?: number;
+    /** Application name */
     appName?: string;
+    /** Log room name (default: 'default') */
+    room?: string;
+    /** Named pipe name */
+    pipe?: string;
+    /** Explicit pipe path */
+    pipePath?: string;
+    /** Async scheduler options */
+    async?: AsyncOptions;
+    /** Backlog buffering options */
+    backlog?: BacklogOptions;
+    /** Enable auto-reconnect (default: true) */
+    reconnect?: boolean;
+    /** Min time between reconnect attempts in ms (default: 3000) */
+    reconnectInterval?: number;
 }
 
 // ==================== Classes ====================
@@ -373,6 +433,9 @@ export class SmartInspect {
     timeStart(name: string): void;
     timeEnd(name: string): void;
 
+    // Queue statistics
+    getQueueStats(): QueueStats;
+
     // Events
     on(event: 'connect', listener: (banner: string) => void): this;
     on(event: 'disconnect', listener: () => void): this;
@@ -383,13 +446,110 @@ export class TcpProtocol {
     host: string;
     port: number;
     timeout: number;
+    connected: boolean;
+    failed: boolean;
+
+    // Async/Backlog/Reconnect settings
+    asyncEnabled: boolean;
+    asyncQueue: number;
+    asyncThrottle: boolean;
+    backlogEnabled: boolean;
+    backlogQueue: number;
+    backlogFlushOn: Level;
+    reconnect: boolean;
+    reconnectInterval: number;
 
     constructor(options?: ConnectOptions);
 
     connect(): Promise<string>;
     disconnect(): Promise<void>;
     isConnected(): boolean;
-    reconnect(): Promise<string>;
+    reconnectNow(): Promise<string>;
+    writePacket(packet: any): void;
+    writePacketAsync(packet: any): Promise<void>;
+    getQueueStats(): QueueStats;
+}
+
+export class PipeProtocol {
+    pipeName: string;
+    pipePath: string | null;
+    timeout: number;
+    connected: boolean;
+    failed: boolean;
+
+    // Async/Backlog/Reconnect settings
+    asyncEnabled: boolean;
+    asyncQueue: number;
+    asyncThrottle: boolean;
+    backlogEnabled: boolean;
+    backlogQueue: number;
+    backlogFlushOn: Level;
+    reconnect: boolean;
+    reconnectInterval: number;
+
+    constructor(options?: ConnectOptions);
+
+    connect(): Promise<string>;
+    disconnect(): Promise<void>;
+    isConnected(): boolean;
+    reconnectNow(): Promise<string>;
+    writePacket(packet: any): void;
+    writePacketAsync(packet: any): Promise<void>;
+    getQueueStats(): QueueStats;
+    getPipePath(): string;
+}
+
+// ==================== Scheduler/Queue Classes ====================
+
+export enum SchedulerAction {
+    Connect = 0,
+    WritePacket = 1,
+    Disconnect = 2,
+    Dispatch = 3
+}
+
+export class SchedulerCommand {
+    action: SchedulerAction;
+    state: any;
+    readonly size: number;
+
+    constructor(action: SchedulerAction, state?: any);
+}
+
+export class PacketQueue {
+    backlog: number;
+    readonly count: number;
+    readonly size: number;
+    readonly isEmpty: boolean;
+
+    push(packet: any): void;
+    pop(): any | null;
+    clear(): void;
+}
+
+export class SchedulerQueue {
+    readonly count: number;
+    readonly size: number;
+
+    enqueue(command: SchedulerCommand): void;
+    dequeue(): SchedulerCommand | null;
+    clear(): void;
+    trim(size: number): boolean;
+}
+
+export class Scheduler {
+    threshold: number;
+    throttle: boolean;
+    readonly queueSize: number;
+    readonly queueCount: number;
+
+    constructor(protocol: TcpProtocol | PipeProtocol);
+
+    start(): void;
+    stop(): Promise<void>;
+    clear(): void;
+    schedule(command: SchedulerCommand): boolean;
+    scheduleAsync(command: SchedulerCommand): Promise<boolean>;
 }
 
 // ==================== Console-Compatible Functions ====================
@@ -436,6 +596,7 @@ export function wrapMethod<T extends (...args: any[]) => any>(name: string, fn: 
 export function getSession(name?: string): Session;
 export function setLevel(level: Level | string): void;
 export function getInstance(): SmartInspect;
+export function getQueueStats(): QueueStats;
 
 /**
  * Logger interface returned by createLogger

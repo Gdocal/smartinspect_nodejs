@@ -34,6 +34,30 @@ class SmartInspect extends EventEmitter {
     /**
      * Connect to SmartInspect Console
      * @param {Object|string} options - Connection options or connection string
+     *
+     * Options:
+     * - host: TCP host (default: auto-detect for WSL, otherwise 127.0.0.1)
+     * - port: TCP port (default: 4228)
+     * - pipe: Named pipe name
+     * - pipePath: Explicit pipe path
+     * - timeout: Connection timeout in ms (default: 30000)
+     * - room: Log room name (default: 'default')
+     *
+     * Async options:
+     * - async.enabled: Enable async scheduler (default: false)
+     * - async.queue: Max async queue size in KB (default: 2048)
+     * - async.throttle: Block callers when queue full (default: false)
+     * - async.clearOnDisconnect: Clear queue on disconnect (default: false)
+     *
+     * Backlog options:
+     * - backlog.enabled: Enable packet buffering (default: false)
+     * - backlog.queue: Max backlog size in KB (default: 2048)
+     * - backlog.flushOn: Log level that triggers flush (default: Level.Error)
+     * - backlog.keepOpen: Keep connection open (default: false)
+     *
+     * Reconnect options:
+     * - reconnect: Enable auto-reconnect (default: false)
+     * - reconnectInterval: Min time between reconnect attempts in ms (default: 0)
      */
     async connect(options = {}) {
         if (typeof options === 'string') {
@@ -45,19 +69,31 @@ class SmartInspect extends EventEmitter {
             this.room = options.room;
         }
 
+        // Build common protocol options
+        const protocolOptions = {
+            timeout: options.timeout || 30000,
+            appName: this.appName,
+            hostName: this.hostName,
+            room: this.room,
+            onError: (err) => this.emit('error', err),
+            onConnect: (banner) => this.emit('connect', banner),
+            onDisconnect: () => this.emit('disconnect'),
+            // Async options
+            async: options.async,
+            // Backlog options
+            backlog: options.backlog,
+            // Reconnect options
+            reconnect: options.reconnect,
+            reconnectInterval: options.reconnectInterval
+        };
+
         // Choose protocol based on options
         if (options.pipe || options.pipePath) {
             // Use Pipe protocol (Named Pipe on Windows, Unix socket on Linux)
             this.protocol = new PipeProtocol({
+                ...protocolOptions,
                 pipe: options.pipe,
-                pipePath: options.pipePath,  // Allow explicit path override
-                timeout: options.timeout || 30000,
-                appName: this.appName,
-                hostName: this.hostName,
-                room: this.room,
-                onError: (err) => this.emit('error', err),
-                onConnect: (banner) => this.emit('connect', banner),
-                onDisconnect: () => this.emit('disconnect')
+                pipePath: options.pipePath
             });
         } else {
             // Use TCP protocol (default)
@@ -67,15 +103,9 @@ class SmartInspect extends EventEmitter {
             }
 
             this.protocol = new TcpProtocol({
+                ...protocolOptions,
                 host: options.host || '127.0.0.1',
-                port: options.port || 4228,
-                timeout: options.timeout || 30000,
-                appName: this.appName,
-                hostName: this.hostName,
-                room: this.room,
-                onError: (err) => this.emit('error', err),
-                onConnect: (banner) => this.emit('connect', banner),
-                onDisconnect: () => this.emit('disconnect')
+                port: options.port || 4228
             });
         }
 
@@ -88,38 +118,95 @@ class SmartInspect extends EventEmitter {
     /**
      * Parse a connection string like "tcp(host=localhost,port=4228,room=myproject)"
      * or "pipe(name=smartinspect)"
+     * Supports new options: async.*, backlog.*, reconnect.*
      */
     parseConnectionString(str) {
-        const options = {};
+        const options = {
+            async: {},
+            backlog: {}
+        };
 
-        // Match tcp(options) format
-        const tcpMatch = str.match(/tcp\(([^)]+)\)/i);
-        if (tcpMatch) {
-            const pairs = tcpMatch[1].split(',');
-            for (const pair of pairs) {
-                const [key, value] = pair.split('=').map(s => s.trim());
-                if (key === 'host') options.host = value;
-                else if (key === 'port') options.port = parseInt(value, 10);
-                else if (key === 'timeout') options.timeout = parseInt(value, 10);
-                else if (key === 'room') options.room = value;
-            }
+        // Match tcp(options) or pipe(options) format
+        const protocolMatch = str.match(/(tcp|pipe)\(([^)]+)\)/i);
+        if (!protocolMatch) {
             return options;
         }
 
-        // Match pipe(options) format
-        const pipeMatch = str.match(/pipe\(([^)]+)\)/i);
-        if (pipeMatch) {
-            const pairs = pipeMatch[1].split(',');
-            for (const pair of pairs) {
-                const [key, value] = pair.split('=').map(s => s.trim());
-                if (key === 'name' || key === 'pipe') options.pipe = value;
-                else if (key === 'timeout') options.timeout = parseInt(value, 10);
-                else if (key === 'room') options.room = value;
+        const protocol = protocolMatch[1].toLowerCase();
+        const pairs = protocolMatch[2].split(',');
+
+        for (const pair of pairs) {
+            const eqIndex = pair.indexOf('=');
+            if (eqIndex === -1) continue;
+
+            const key = pair.substring(0, eqIndex).trim().toLowerCase();
+            const value = pair.substring(eqIndex + 1).trim();
+
+            // Basic options
+            if (key === 'host') options.host = value;
+            else if (key === 'port') options.port = parseInt(value, 10);
+            else if (key === 'timeout') options.timeout = parseInt(value, 10);
+            else if (key === 'room') options.room = value;
+            else if (key === 'name' || key === 'pipe') options.pipe = value;
+
+            // Async options
+            else if (key === 'async.enabled') options.async.enabled = this._parseBoolean(value);
+            else if (key === 'async.queue') options.async.queue = parseInt(value, 10);
+            else if (key === 'async.throttle') options.async.throttle = this._parseBoolean(value);
+            else if (key === 'async.clearondisconnect') options.async.clearOnDisconnect = this._parseBoolean(value);
+
+            // Backlog options
+            else if (key === 'backlog.enabled') options.backlog.enabled = this._parseBoolean(value);
+            else if (key === 'backlog.queue') options.backlog.queue = parseInt(value, 10);
+            else if (key === 'backlog.flushon') options.backlog.flushOn = this._parseLevel(value);
+            else if (key === 'backlog.keepopen') options.backlog.keepOpen = this._parseBoolean(value);
+
+            // Shorthand backlog (like C#: backlog=2048 enables backlog with that size)
+            else if (key === 'backlog') {
+                const size = parseInt(value, 10);
+                if (size > 0) {
+                    options.backlog.enabled = true;
+                    options.backlog.queue = size;
+                } else {
+                    options.backlog.enabled = false;
+                }
             }
-            return options;
+
+            // Reconnect options
+            else if (key === 'reconnect') options.reconnect = this._parseBoolean(value);
+            else if (key === 'reconnect.interval') options.reconnectInterval = parseInt(value, 10);
         }
+
+        // Clean up empty nested objects
+        if (Object.keys(options.async).length === 0) delete options.async;
+        if (Object.keys(options.backlog).length === 0) delete options.backlog;
 
         return options;
+    }
+
+    /**
+     * Parse boolean from string
+     * @private
+     */
+    _parseBoolean(value) {
+        return value.toLowerCase() === 'true' || value === '1';
+    }
+
+    /**
+     * Parse log level from string
+     * @private
+     */
+    _parseLevel(value) {
+        const levels = {
+            'debug': Level.Debug,
+            'verbose': Level.Verbose,
+            'message': Level.Message,
+            'warning': Level.Warning,
+            'error': Level.Error,
+            'fatal': Level.Fatal,
+            'control': Level.Control
+        };
+        return levels[value.toLowerCase()] ?? Level.Error;
     }
 
     /**
@@ -142,15 +229,30 @@ class SmartInspect extends EventEmitter {
 
     /**
      * Send a packet
+     * In async/backlog mode, packets may be queued for later delivery
      */
     sendPacket(packet) {
-        if (this.enabled && this.protocol && this.protocol.isConnected()) {
-            try {
-                this.protocol.writePacket(packet);
-            } catch (err) {
-                this.emit('error', err);
-            }
+        if (!this.enabled || !this.protocol) {
+            return;
         }
+
+        try {
+            // Let the protocol handle buffering/queueing in async mode
+            // Don't check isConnected() here - protocol handles that internally
+            this.protocol.writePacket(packet);
+        } catch (err) {
+            this.emit('error', err);
+        }
+    }
+
+    /**
+     * Get queue statistics (for monitoring)
+     */
+    getQueueStats() {
+        if (this.protocol && typeof this.protocol.getQueueStats === 'function') {
+            return this.protocol.getQueueStats();
+        }
+        return { backlogCount: 0, backlogSize: 0, schedulerCount: 0, schedulerSize: 0 };
     }
 
     /**

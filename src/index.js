@@ -29,7 +29,7 @@
 
 const { SmartInspect, getDefault, getMainSession } = require('./smartinspect');
 const { Session } = require('./session');
-const { TcpProtocol, detectWindowsHost } = require('./protocol');
+const { TcpProtocol, PipeProtocol, detectWindowsHost } = require('./protocol');
 const {
     Level,
     PacketType,
@@ -41,6 +41,13 @@ const {
     SourceId,
     GraphicId
 } = require('./enums');
+
+// New scheduler/queue classes
+const { PacketQueue } = require('./PacketQueue');
+const { Scheduler } = require('./Scheduler');
+const { SchedulerCommand } = require('./SchedulerCommand');
+const { SchedulerAction } = require('./SchedulerAction');
+const { SchedulerQueue } = require('./SchedulerQueue');
 const {
     ViewerContext,
     TextContext,
@@ -603,6 +610,14 @@ function setLevel(level) {
 }
 
 /**
+ * Get queue statistics (for monitoring async/backlog)
+ * @returns {Object} { backlogCount, backlogSize, schedulerCount, schedulerSize }
+ */
+function getQueueStats() {
+    return getInstance().getQueueStats();
+}
+
+/**
  * Create a colored log message
  */
 function logColored(color, ...args) {
@@ -671,11 +686,20 @@ module.exports = {
     createLogger,
     setLevel,
     getInstance,
+    getQueueStats,
 
     // Classes for advanced usage
     SmartInspect,
     Session,
     TcpProtocol,
+    PipeProtocol,
+
+    // Scheduler/Queue classes (for advanced usage)
+    PacketQueue,
+    Scheduler,
+    SchedulerCommand,
+    SchedulerAction,
+    SchedulerQueue,
 
     // Enums
     Level,

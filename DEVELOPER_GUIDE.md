@@ -368,6 +368,170 @@ SMARTINSPECT_ENABLED=false
 
 ---
 
+## Advanced Features
+
+### Async Scheduler (Non-Blocking Logging)
+
+By default, logging is synchronous. For high-performance applications, enable the async scheduler to prevent logging from blocking your main thread:
+
+```javascript
+await si.connect({
+    host: '127.0.0.1',
+    async: {
+        enabled: true,      // Enable background processing
+        queue: 4096,        // Max queue size in KB (default: 2048)
+        throttle: false,    // Set true to block when queue full
+        clearOnDisconnect: false
+    }
+});
+
+// Now log calls return immediately
+si.log('This returns instantly');
+si.logObject('Data', hugeObject);  // Won't block even for large objects
+```
+
+**Queue Statistics:**
+```javascript
+const stats = si.getQueueStats();
+console.log(`Queued: ${stats.schedulerCount} packets, ${stats.schedulerSize} bytes`);
+```
+
+---
+
+### Backlog Buffering (Server Unavailable Handling)
+
+When the SmartInspect Console is not available, packets can be buffered and sent when connection is restored:
+
+```javascript
+await si.connect({
+    host: '127.0.0.1',
+    backlog: {
+        enabled: true,           // Enable buffering
+        queue: 2048,             // Max buffer in KB
+        flushOn: si.Level.Error, // Flush on Error+ logs
+        keepOpen: true           // Keep connection open
+    },
+    reconnect: true,             // Auto-reconnect when disconnected
+    reconnectInterval: 5000      // Wait 5s between reconnect attempts
+});
+
+// If server goes down, logs are buffered
+si.log('Buffered if server down');
+si.log('Also buffered');
+
+// Error-level logs trigger immediate flush attempt
+si.error('This triggers reconnection and flushes all buffered logs');
+```
+
+**Behavior:**
+1. Regular logs (Debug, Message, Warning) are buffered
+2. Error/Fatal logs trigger immediate flush
+3. Oldest packets are dropped when buffer is full (FIFO)
+4. Auto-reconnection attempts happen in background
+
+---
+
+### Auto-Reconnection
+
+Enable automatic reconnection when connection is lost:
+
+```javascript
+await si.connect({
+    host: '127.0.0.1',
+    reconnect: true,           // Enable auto-reconnect
+    reconnectInterval: 3000    // Minimum 3 seconds between attempts
+});
+
+// Listen for connection events
+const inspector = si.getInstance();
+inspector.on('disconnect', () => console.log('Disconnected, will retry...'));
+inspector.on('connect', () => console.log('Reconnected!'));
+inspector.on('error', (err) => console.log('Error:', err.message));
+```
+
+---
+
+### Connection Strings (C# Style)
+
+For compatibility with C# SmartInspect, you can use connection strings:
+
+```javascript
+// Basic connection
+await si.connect('tcp(host=127.0.0.1,port=4228)');
+
+// With all options
+await si.connect('tcp(host=127.0.0.1,port=4228,async.enabled=true,async.queue=4096,backlog=2048,backlog.flushon=error,reconnect=true,reconnect.interval=5000)');
+
+// Pipe protocol
+await si.connect('pipe(name=smartinspect)');
+```
+
+**Connection String Options:**
+| Option | Example | Description |
+|--------|---------|-------------|
+| host | host=127.0.0.1 | TCP host |
+| port | port=4228 | TCP port |
+| timeout | timeout=30000 | Connection timeout (ms) |
+| room | room=myproject | Log room name |
+| async.enabled | async.enabled=true | Enable async |
+| async.queue | async.queue=4096 | Queue size (KB) |
+| async.throttle | async.throttle=true | Throttle mode |
+| backlog | backlog=2048 | Enable backlog with size |
+| backlog.flushon | backlog.flushon=error | Flush level |
+| reconnect | reconnect=true | Auto-reconnect |
+| reconnect.interval | reconnect.interval=5000 | Reconnect interval (ms) |
+
+---
+
+### Recommended Production Configuration
+
+**Note:** Backlog buffering and auto-reconnect are enabled by default with sensible settings:
+- `backlog.enabled: true`, `backlog.keepOpen: true`
+- `reconnect: true`, `reconnectInterval: 3000ms`
+
+For most use cases, you only need to add async if you want non-blocking logging:
+
+```javascript
+// lib/logger.js - Production-ready setup
+const si = require('smartinspect');
+
+const config = {
+    host: process.env.SMARTINSPECT_HOST || '127.0.0.1',
+    port: parseInt(process.env.SMARTINSPECT_PORT) || 4228,
+    appName: process.env.APP_NAME || 'My Application',
+
+    // Enable async for non-blocking logging (optional)
+    async: {
+        enabled: true,
+        queue: 4096         // 4MB queue
+    }
+
+    // backlog and reconnect are enabled by default!
+};
+
+async function init() {
+    try {
+        const inspector = await si.connect(config);
+
+        // Monitor connection health
+        inspector.on('disconnect', () => {
+            console.log('[SmartInspect] Disconnected, buffering logs...');
+        });
+        inspector.on('connect', () => {
+            console.log('[SmartInspect] Connected, flushing buffer...');
+        });
+
+        console.log('[SmartInspect] Initialized successfully');
+    } catch (err) {
+        console.warn('[SmartInspect] Initial connection failed, will retry:', err.message);
+    }
+}
+
+module.exports = { init, si };
+```
+
+---
+
 ## Tips
 
 1. **Use descriptive session names** - Makes filtering easier in SmartInspect Console
@@ -376,6 +540,8 @@ SMARTINSPECT_ENABLED=false
 4. **Use log.sql()** - Gets syntax highlighting in SmartInspect Console
 5. **Use log.time()/timeEnd()** - Great for performance monitoring
 6. **Use log.object()** - Better than JSON.stringify for complex objects
+7. **Enable async in production** - Prevents logging from blocking your app
+8. **Enable backlog + reconnect** - Never lose logs when server restarts
 
 ---
 
