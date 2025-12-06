@@ -20,6 +20,7 @@ class PacketQueue {
         this._count = 0;
         this._head = null;
         this._tail = null;
+        this.onPacketDropped = null; // Callback: (droppedCount) => void
     }
 
     /**
@@ -80,14 +81,21 @@ class PacketQueue {
 
     /**
      * Trim oldest packets until size is within backlog limit
+     * Notifies via onPacketDropped callback when packets are dropped
      * @private
      */
     _resize() {
+        let droppedCount = 0;
         while (this._backlog < this._size) {
             if (this.pop() === null) {
                 this._size = 0;
-                return;
+                break;
             }
+            droppedCount++;
+        }
+        // Notify about dropped packets
+        if (droppedCount > 0 && this.onPacketDropped) {
+            this.onPacketDropped(droppedCount);
         }
     }
 

@@ -44,10 +44,9 @@ class TcpProtocol {
         this.reconnectInterval = options.reconnectInterval ?? 3000; // ms (default 3s)
         this._reconnectTickCount = 0;
 
-        // Backlog settings (like C# Protocol) - enabled by default
+        // Backlog settings - buffers messages when disconnected
         this.backlogEnabled = options.backlog?.enabled ?? true;
         this.backlogQueue = (options.backlog?.queue || 2048) * 1024; // KB to bytes
-        this.backlogFlushOn = options.backlog?.flushOn ?? Level.Error;
         this.backlogKeepOpen = options.backlog?.keepOpen ?? true;
 
         // Async settings (like C# Protocol)
@@ -59,9 +58,13 @@ class TcpProtocol {
         // Internal state
         this._queue = new PacketQueue();
         this._queue.backlog = this.backlogQueue;
+        this._queue.onPacketDropped = (count) => {
+            console.warn(`[SmartInspect] Backlog overflow: ${count} packets dropped`);
+        };
         this._keepOpen = !this.backlogEnabled || this.backlogKeepOpen;
         this._scheduler = null;
         this._failed = false;
+        this._reconnectPending = false;
     }
 
     /**
@@ -91,8 +94,8 @@ class TcpProtocol {
     }
 
     /**
-     * Connect to SmartInspect Console
-     * Uses scheduler if async enabled
+     * Connect to SmartInspect Console (non-blocking)
+     * Connection happens in background, messages are buffered until connected
      */
     async connect() {
         if (this.asyncEnabled) {
@@ -107,8 +110,29 @@ class TcpProtocol {
             return;
         }
 
-        // Synchronous connect
-        await this.implConnect();
+        // Non-blocking connect - start connection in background
+        this._backgroundConnect();
+    }
+
+    /**
+     * Background connection (fire and forget)
+     * Buffers messages during connection attempt, auto-flushes when connected
+     * @private
+     */
+    _backgroundConnect() {
+        this._internalConnect()
+            .then(() => {
+                this.connected = true;
+                this._failed = false;
+                // Auto-flush any packets buffered during connection
+                if (this.backlogEnabled && this._queue.count > 0) {
+                    return this._flushQueue();
+                }
+            })
+            .catch(err => {
+                this._failed = true;
+                if (this.onError) this.onError(err);
+            });
     }
 
     /**
@@ -293,33 +317,25 @@ class TcpProtocol {
     }
 
     /**
-     * Internal write packet implementation with backlog logic
+     * Internal write packet implementation with connection-state-based buffering
      */
     async implWritePacket(packet) {
-        // Skip if not connected and reconnect disabled and keepOpen true
-        if (!this.connected && !this.reconnect && this._keepOpen) {
+        // Skip if not connected and reconnect disabled
+        if (!this.connected && !this.reconnect) {
             return;
         }
 
         try {
-            let queued = false;
-
-            if (this.backlogEnabled) {
-                const level = packet.level ?? Level.Message;
-
-                if (level >= this.backlogFlushOn && level !== Level.Control) {
-                    // High priority packet - flush queue first, then forward
-                    await this._flushQueue();
-                    await this._forwardPacket(packet, !this._keepOpen);
-                } else {
-                    // Normal packet - add to backlog queue
-                    this._queue.push(packet);
-                    queued = true;
-                }
-            }
-
-            if (!queued) {
+            if (this.connected) {
+                // Connected - send immediately
                 await this._forwardPacket(packet, !this._keepOpen);
+            } else if (this.backlogEnabled) {
+                // Disconnected - buffer the packet
+                this._queue.push(packet);
+                // Trigger non-blocking reconnection attempt if enabled
+                if (this.reconnect && this._keepOpen) {
+                    this._tryReconnect();
+                }
             }
         } catch (err) {
             this._reset();
@@ -383,7 +399,22 @@ class TcpProtocol {
     }
 
     /**
-     * Attempt reconnection with time-gating (like C# Protocol.Reconnect)
+     * Non-blocking reconnection attempt (fire and forget)
+     * Used to trigger reconnection while buffering messages
+     * @private
+     */
+    _tryReconnect() {
+        // Don't block - fire and forget
+        if (this._reconnectPending) return;
+        this._reconnectPending = true;
+
+        this._reconnect()
+            .catch(() => {})
+            .finally(() => { this._reconnectPending = false; });
+    }
+
+    /**
+     * Attempt reconnection with time-gating and auto-flush
      * @private
      */
     async _reconnect() {
@@ -400,6 +431,11 @@ class TcpProtocol {
             await this._internalConnect();
             this.connected = true;
             this._failed = false;
+
+            // Auto-flush buffered packets after successful reconnection
+            if (this.backlogEnabled && this._queue.count > 0) {
+                await this._flushQueue();
+            }
         } catch (err) {
             // Silent failure during reconnect (like C#)
             this._failed = true;
@@ -552,10 +588,9 @@ class PipeProtocol {
         this.reconnectInterval = options.reconnectInterval ?? 3000; // ms (default 3s)
         this._reconnectTickCount = 0;
 
-        // Backlog settings (like C# Protocol) - enabled by default
+        // Backlog settings - buffers messages when disconnected
         this.backlogEnabled = options.backlog?.enabled ?? true;
         this.backlogQueue = (options.backlog?.queue || 2048) * 1024;
-        this.backlogFlushOn = options.backlog?.flushOn ?? Level.Error;
         this.backlogKeepOpen = options.backlog?.keepOpen ?? true;
 
         // Async settings (like C# Protocol)
@@ -567,9 +602,13 @@ class PipeProtocol {
         // Internal state
         this._queue = new PacketQueue();
         this._queue.backlog = this.backlogQueue;
+        this._queue.onPacketDropped = (count) => {
+            console.warn(`[SmartInspect] Backlog overflow: ${count} packets dropped`);
+        };
         this._keepOpen = !this.backlogEnabled || this.backlogKeepOpen;
         this._scheduler = null;
         this._failed = false;
+        this._reconnectPending = false;
     }
 
     /**
@@ -614,7 +653,8 @@ class PipeProtocol {
     }
 
     /**
-     * Connect to SmartInspect Console
+     * Connect to SmartInspect Console (non-blocking)
+     * Connection happens in background, messages are buffered until connected
      */
     async connect() {
         if (this.asyncEnabled) {
@@ -629,7 +669,29 @@ class PipeProtocol {
             return;
         }
 
-        await this.implConnect();
+        // Non-blocking connect - start connection in background
+        this._backgroundConnect();
+    }
+
+    /**
+     * Background connection (fire and forget)
+     * Buffers messages during connection attempt, auto-flushes when connected
+     * @private
+     */
+    _backgroundConnect() {
+        this._internalConnect()
+            .then(() => {
+                this.connected = true;
+                this._failed = false;
+                // Auto-flush any packets buffered during connection
+                if (this.backlogEnabled && this._queue.count > 0) {
+                    return this._flushQueue();
+                }
+            })
+            .catch(err => {
+                this._failed = true;
+                if (this.onError) this.onError(err);
+            });
     }
 
     /**
@@ -806,30 +868,25 @@ class PipeProtocol {
     }
 
     /**
-     * Internal write packet implementation with backlog logic
+     * Internal write packet implementation with connection-state-based buffering
      */
     async implWritePacket(packet) {
-        if (!this.connected && !this.reconnect && this._keepOpen) {
+        // Skip if not connected and reconnect disabled
+        if (!this.connected && !this.reconnect) {
             return;
         }
 
         try {
-            let queued = false;
-
-            if (this.backlogEnabled) {
-                const level = packet.level ?? Level.Message;
-
-                if (level >= this.backlogFlushOn && level !== Level.Control) {
-                    await this._flushQueue();
-                    await this._forwardPacket(packet, !this._keepOpen);
-                } else {
-                    this._queue.push(packet);
-                    queued = true;
-                }
-            }
-
-            if (!queued) {
+            if (this.connected) {
+                // Connected - send immediately
                 await this._forwardPacket(packet, !this._keepOpen);
+            } else if (this.backlogEnabled) {
+                // Disconnected - buffer the packet
+                this._queue.push(packet);
+                // Trigger non-blocking reconnection attempt if enabled
+                if (this.reconnect && this._keepOpen) {
+                    this._tryReconnect();
+                }
             }
         } catch (err) {
             this._reset();
@@ -893,7 +950,22 @@ class PipeProtocol {
     }
 
     /**
-     * Attempt reconnection with time-gating
+     * Non-blocking reconnection attempt (fire and forget)
+     * Used to trigger reconnection while buffering messages
+     * @private
+     */
+    _tryReconnect() {
+        // Don't block - fire and forget
+        if (this._reconnectPending) return;
+        this._reconnectPending = true;
+
+        this._reconnect()
+            .catch(() => {})
+            .finally(() => { this._reconnectPending = false; });
+    }
+
+    /**
+     * Attempt reconnection with time-gating and auto-flush
      * @private
      */
     async _reconnect() {
@@ -909,6 +981,11 @@ class PipeProtocol {
             await this._internalConnect();
             this.connected = true;
             this._failed = false;
+
+            // Auto-flush buffered packets after successful reconnection
+            if (this.backlogEnabled && this._queue.count > 0) {
+                await this._flushQueue();
+            }
         } catch (err) {
             this._failed = true;
             try {
