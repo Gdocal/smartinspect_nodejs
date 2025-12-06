@@ -25,7 +25,7 @@ class TcpProtocol {
     constructor(options = {}) {
         this.host = options.host || '127.0.0.1';
         this.port = options.port || 4228;
-        this.timeout = options.timeout || DEFAULT_TIMEOUT;
+        this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
         this.appName = options.appName || 'Node.js App';
         this.hostName = options.hostName || os.hostname();
         this.room = options.room || 'default';
@@ -165,7 +165,10 @@ class TcpProtocol {
             }
 
             this.socket = new net.Socket();
-            this.socket.setTimeout(this.timeout);
+            // Disable Nagle algorithm for immediate packet transmission
+            this.socket.setNoDelay(true);
+            // Use keepalive instead of inactivity timeout - SmartInspect is write-only after handshake
+            this.socket.setKeepAlive(true, 30000);
 
             let serverBanner = '';
             let handshakeComplete = false;
@@ -214,14 +217,9 @@ class TcpProtocol {
                 reject(err);
             });
 
-            this.socket.on('timeout', () => {
-                cleanup();
-                const err = new Error('Socket timeout');
-                if (this.onError) {
-                    this.onError(err);
-                }
-                this.socket.destroy();
-            });
+            // Note: We don't use socket.on('timeout') because SmartInspect is a write-only
+            // protocol after the initial handshake. The inactivity timeout would incorrectly
+            // destroy the socket. TCP keepalive handles detecting dead connections instead.
 
             this.socket.on('close', () => {
                 cleanup();
@@ -289,7 +287,10 @@ class TcpProtocol {
 
     /**
      * Write a packet to the connection
-     * Uses scheduler if async enabled
+     * Uses scheduler if async enabled, otherwise handles synchronously
+     *
+     * IMPORTANT: When disconnected, queueing must be SYNCHRONOUS to avoid race
+     * conditions with _backgroundConnect() which flushes the queue when connected.
      */
     writePacket(packet) {
         if (this.asyncEnabled && this._scheduler !== null) {
@@ -297,8 +298,25 @@ class TcpProtocol {
             return;
         }
 
-        // Synchronous write
-        this.implWritePacket(packet);
+        // Synchronous path for disconnected state - avoids race condition!
+        // The async implWritePacket would return a Promise immediately, allowing
+        // _backgroundConnect's flush to run before the packet is queued.
+        if (!this.connected) {
+            if (!this.reconnect) {
+                return; // Skip if not reconnecting
+            }
+            if (this.backlogEnabled) {
+                this._queue.push(packet);
+                // Trigger non-blocking reconnection attempt if enabled
+                if (this._keepOpen) {
+                    this._tryReconnect();
+                }
+            }
+            return;
+        }
+
+        // Connected - forward immediately (async is fine here)
+        this._forwardPacket(packet, !this._keepOpen);
     }
 
     /**
@@ -569,7 +587,7 @@ class PipeProtocol {
     constructor(options = {}) {
         this.pipeName = options.pipe || DEFAULT_PIPE_NAME;
         this.pipePath = options.pipePath || null;
-        this.timeout = options.timeout || DEFAULT_TIMEOUT;
+        this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
         this.appName = options.appName || 'Node.js App';
         this.hostName = options.hostName || os.hostname();
         this.room = options.room || 'default';
@@ -725,7 +743,8 @@ class PipeProtocol {
 
             const pipePath = this.getPipePath();
             this.socket = net.connect(pipePath);
-            this.socket.setTimeout(this.timeout);
+            // Use keepalive instead of inactivity timeout - SmartInspect is write-only after handshake
+            this.socket.setKeepAlive(true, 30000);
 
             let serverBanner = '';
             let handshakeComplete = false;
@@ -772,14 +791,9 @@ class PipeProtocol {
                 reject(err);
             });
 
-            this.socket.on('timeout', () => {
-                cleanup();
-                const err = new Error('Socket timeout');
-                if (this.onError) {
-                    this.onError(err);
-                }
-                this.socket.destroy();
-            });
+            // Note: We don't use socket.on('timeout') because SmartInspect is a write-only
+            // protocol after the initial handshake. The inactivity timeout would incorrectly
+            // destroy the socket. TCP keepalive handles detecting dead connections instead.
 
             this.socket.on('close', () => {
                 cleanup();
@@ -844,6 +858,10 @@ class PipeProtocol {
 
     /**
      * Write a packet to the connection
+     * Uses scheduler if async enabled, otherwise handles synchronously
+     *
+     * IMPORTANT: When disconnected, queueing must be SYNCHRONOUS to avoid race
+     * conditions with _backgroundConnect() which flushes the queue when connected.
      */
     writePacket(packet) {
         if (this.asyncEnabled && this._scheduler !== null) {
@@ -851,7 +869,25 @@ class PipeProtocol {
             return;
         }
 
-        this.implWritePacket(packet);
+        // Synchronous path for disconnected state - avoids race condition!
+        // The async implWritePacket would return a Promise immediately, allowing
+        // _backgroundConnect's flush to run before the packet is queued.
+        if (!this.connected) {
+            if (!this.reconnect) {
+                return; // Skip if not reconnecting
+            }
+            if (this.backlogEnabled) {
+                this._queue.push(packet);
+                // Trigger non-blocking reconnection attempt if enabled
+                if (this._keepOpen) {
+                    this._tryReconnect();
+                }
+            }
+            return;
+        }
+
+        // Connected - forward immediately (async is fine here)
+        this._forwardPacket(packet, !this._keepOpen);
     }
 
     /**

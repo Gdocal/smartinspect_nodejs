@@ -98,9 +98,11 @@ async function connect(options = {}) {
         instance.appName = options.appName;
     }
 
+    // Set _connected immediately to allow backlog buffering
+    // Messages sent before connection completes will be buffered by the protocol
+    _connected = true;
     _connecting = instance.connect(options);
     await _connecting;
-    _connected = true;
     _connecting = null;
 
     return instance;

@@ -109,8 +109,11 @@ class SmartInspect extends EventEmitter {
             });
         }
 
-        await this.protocol.connect();
+        // Enable BEFORE await to allow backlog buffering during fire-and-forget connect
+        // The protocol will buffer messages until the connection is established
         this.enabled = true;
+
+        await this.protocol.connect();
 
         return this;
     }
