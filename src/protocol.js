@@ -273,6 +273,13 @@ class TcpProtocol {
     _internalDisconnect() {
         return new Promise((resolve) => {
             if (this.socket) {
+                // Check if socket is already destroyed to avoid hanging
+                if (this.socket.destroyed) {
+                    this.socket = null;
+                    this.connected = false;
+                    resolve();
+                    return;
+                }
                 this.socket.once('close', () => {
                     this.socket = null;
                     this.connected = false;
@@ -844,6 +851,13 @@ class PipeProtocol {
     _internalDisconnect() {
         return new Promise((resolve) => {
             if (this.socket) {
+                // Check if socket is already destroyed to avoid hanging
+                if (this.socket.destroyed) {
+                    this.socket = null;
+                    this.connected = false;
+                    resolve();
+                    return;
+                }
                 this.socket.once('close', () => {
                     this.socket = null;
                     this.connected = false;

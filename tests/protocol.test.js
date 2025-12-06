@@ -219,6 +219,31 @@ describe('TcpProtocol', () => {
             await protocol.disconnect();
             expect(protocol._queue.count).toBe(0);
         });
+
+        test('disconnect does not hang when socket already destroyed', async () => {
+            protocol = new TcpProtocol({
+                host: '127.0.0.1',
+                port: server.port
+            });
+
+            await protocol.connect();
+            await waitFor(() => protocol.connected, 2000);
+
+            // Force destroy the socket to simulate server disconnect
+            protocol.socket.destroy();
+
+            // Wait a bit for close event
+            await new Promise(r => setTimeout(r, 50));
+
+            // Disconnect should not hang even though socket is already destroyed
+            const disconnectPromise = protocol.disconnect();
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Disconnect hung!')), 1000)
+            );
+
+            // Should complete within 1 second, not hang forever
+            await expect(Promise.race([disconnectPromise, timeoutPromise])).resolves.toBeUndefined();
+        });
     });
 
     describe('Backlog Buffering', () => {
