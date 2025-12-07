@@ -155,26 +155,29 @@ const DEFAULT_COLOR = { r: 5, g: 0, b: 0, a: 255 };
 
 /**
  * Preset colors for logColored()
+ *
+ * These colors are designed to work well as row backgrounds in both
+ * dark and light themes - muted, pleasant, and readable.
  */
 const Colors = {
-    // Basic colors
-    RED: { r: 255, g: 0, b: 0, a: 255 },
-    GREEN: { r: 0, g: 128, b: 0, a: 255 },
-    BLUE: { r: 0, g: 0, b: 255, a: 255 },
-    YELLOW: { r: 255, g: 255, b: 0, a: 255 },
-    ORANGE: { r: 255, g: 165, b: 0, a: 255 },
-    PURPLE: { r: 128, g: 0, b: 128, a: 255 },
-    CYAN: { r: 0, g: 255, b: 255, a: 255 },
-    PINK: { r: 255, g: 192, b: 203, a: 255 },
+    // Basic colors - muted versions that work as row backgrounds
+    RED: { r: 180, g: 80, b: 80, a: 255 },       // Muted coral red
+    GREEN: { r: 80, g: 150, b: 100, a: 255 },    // Soft forest green
+    BLUE: { r: 80, g: 120, b: 180, a: 255 },     // Soft steel blue
+    YELLOW: { r: 200, g: 180, b: 100, a: 255 },  // Muted gold
+    ORANGE: { r: 200, g: 130, b: 80, a: 255 },   // Muted terracotta
+    PURPLE: { r: 140, g: 100, b: 160, a: 255 },  // Soft lavender purple
+    CYAN: { r: 80, g: 160, b: 170, a: 255 },     // Muted teal
+    PINK: { r: 180, g: 130, b: 150, a: 255 },    // Dusty rose
     WHITE: { r: 255, g: 255, b: 255, a: 255 },
     BLACK: { r: 0, g: 0, b: 0, a: 255 },
     GRAY: { r: 128, g: 128, b: 128, a: 255 },
 
-    // Semantic colors (for important events)
-    SUCCESS: { r: 34, g: 139, b: 34, a: 255 },   // Forest green
-    WARNING: { r: 255, g: 140, b: 0, a: 255 },   // Dark orange
-    ERROR: { r: 220, g: 20, b: 60, a: 255 },     // Crimson
-    INFO: { r: 70, g: 130, b: 180, a: 255 }      // Steel blue
+    // Semantic colors - muted for readability
+    SUCCESS: { r: 90, g: 150, b: 110, a: 255 },  // Muted green
+    WARNING: { r: 190, g: 150, b: 80, a: 255 },  // Muted amber
+    ERROR: { r: 170, g: 90, b: 90, a: 255 },     // Muted red
+    INFO: { r: 90, g: 130, b: 160, a: 255 }      // Muted blue
 };
 
 /**
