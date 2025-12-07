@@ -177,6 +177,61 @@ const Colors = {
     INFO: { r: 70, g: 130, b: 180, a: 255 }      // Steel blue
 };
 
+/**
+ * Parse color from various formats to { r, g, b, a } object.
+ * Supports:
+ * - Hex string: '#FF6432', '#FF6432FF', 'FF6432'
+ * - RGB array: [255, 100, 50] or [255, 100, 50, 255]
+ * - Object: { r, g, b, a }
+ * @param {string|Array|Object} color - Color in any supported format
+ * @returns {Object} Color object { r, g, b, a }
+ */
+function parseColor(color) {
+    if (!color) return DEFAULT_COLOR;
+
+    // Already an object with r, g, b
+    if (typeof color === 'object' && !Array.isArray(color)) {
+        return {
+            r: color.r || 0,
+            g: color.g || 0,
+            b: color.b || 0,
+            a: color.a !== undefined ? color.a : 255
+        };
+    }
+
+    // Array: [r, g, b] or [r, g, b, a]
+    if (Array.isArray(color)) {
+        return {
+            r: color[0] || 0,
+            g: color[1] || 0,
+            b: color[2] || 0,
+            a: color[3] !== undefined ? color[3] : 255
+        };
+    }
+
+    // Hex string: '#FF6432', '#FF6432FF', 'FF6432'
+    if (typeof color === 'string') {
+        let hex = color.replace(/^#/, '');
+
+        // Handle short hex: #F00 -> #FF0000
+        if (hex.length === 3) {
+            hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        }
+
+        // Parse 6 or 8 character hex
+        if (hex.length >= 6) {
+            return {
+                r: parseInt(hex.substring(0, 2), 16) || 0,
+                g: parseInt(hex.substring(2, 4), 16) || 0,
+                b: parseInt(hex.substring(4, 6), 16) || 0,
+                a: hex.length >= 8 ? parseInt(hex.substring(6, 8), 16) : 255
+            };
+        }
+    }
+
+    return DEFAULT_COLOR;
+}
+
 module.exports = {
     Level,
     PacketType,
@@ -188,5 +243,6 @@ module.exports = {
     SourceId,
     GraphicId,
     DEFAULT_COLOR,
-    Colors
+    Colors,
+    parseColor
 };

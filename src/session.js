@@ -13,7 +13,8 @@ const {
     ProcessFlowType,
     SourceId,
     GraphicId,
-    DEFAULT_COLOR
+    DEFAULT_COLOR,
+    parseColor
 } = require('./enums');
 
 const {
@@ -268,11 +269,13 @@ class Session {
     // ==================== Colored Logging ====================
 
     /**
-     * Log a colored message
+     * Log a colored message.
+     * Color can be: hex string '#FF6432', array [255,100,50], or object {r,g,b,a}
      */
     logColored(color, ...args) {
         const title = this.formatArgs(...args);
-        this.sendLogEntry(this.parent.defaultLevel, title, LogEntryType.Message, ViewerId.Title, color);
+        const parsedColor = parseColor(color);
+        this.sendLogEntry(this.parent.defaultLevel, title, LogEntryType.Message, ViewerId.Title, parsedColor);
     }
 
     // ==================== Exception Logging ====================

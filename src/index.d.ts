@@ -131,6 +131,17 @@ export interface Color {
 }
 
 /**
+ * Color input type - accepts hex string, RGB array, or Color object
+ */
+export type ColorInput = string | [number, number, number] | [number, number, number, number] | Color;
+
+/**
+ * Parse color from various formats to Color object.
+ * Supports: hex '#FF6432', array [255,100,50], object {r,g,b,a}
+ */
+export function parseColor(color: ColorInput): Color;
+
+/**
  * Preset colors for logColored()
  */
 export const Colors: {

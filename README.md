@@ -86,10 +86,8 @@ const { Colors } = require('smartinspect');
 
 si.logColored(Colors.SUCCESS, 'Operation completed successfully');
 si.logColored(Colors.WARNING, 'Rate limit approaching');
-si.logColored(Colors.ERROR, 'Critical failure detected');
-
-// Or custom color: { r, g, b, a }
-si.logColored({ r: 255, g: 100, b: 50, a: 255 }, 'Custom color');
+si.logColored('#FF6432', 'Custom hex color');
+si.logColored([255, 100, 50], 'RGB array');
 ```
 
 Available presets: `RED`, `GREEN`, `BLUE`, `YELLOW`, `ORANGE`, `PURPLE`, `CYAN`, `PINK`, `WHITE`, `BLACK`, `GRAY`, `SUCCESS`, `WARNING`, `ERROR`, `INFO`
