@@ -153,6 +153,30 @@ const GraphicId = {
  */
 const DEFAULT_COLOR = { r: 5, g: 0, b: 0, a: 255 };
 
+/**
+ * Preset colors for logColored()
+ */
+const Colors = {
+    // Basic colors
+    RED: { r: 255, g: 0, b: 0, a: 255 },
+    GREEN: { r: 0, g: 128, b: 0, a: 255 },
+    BLUE: { r: 0, g: 0, b: 255, a: 255 },
+    YELLOW: { r: 255, g: 255, b: 0, a: 255 },
+    ORANGE: { r: 255, g: 165, b: 0, a: 255 },
+    PURPLE: { r: 128, g: 0, b: 128, a: 255 },
+    CYAN: { r: 0, g: 255, b: 255, a: 255 },
+    PINK: { r: 255, g: 192, b: 203, a: 255 },
+    WHITE: { r: 255, g: 255, b: 255, a: 255 },
+    BLACK: { r: 0, g: 0, b: 0, a: 255 },
+    GRAY: { r: 128, g: 128, b: 128, a: 255 },
+
+    // Semantic colors (for important events)
+    SUCCESS: { r: 34, g: 139, b: 34, a: 255 },   // Forest green
+    WARNING: { r: 255, g: 140, b: 0, a: 255 },   // Dark orange
+    ERROR: { r: 220, g: 20, b: 60, a: 255 },     // Crimson
+    INFO: { r: 70, g: 130, b: 180, a: 255 }      // Steel blue
+};
+
 module.exports = {
     Level,
     PacketType,
@@ -163,5 +187,6 @@ module.exports = {
     ProcessFlowType,
     SourceId,
     GraphicId,
-    DEFAULT_COLOR
+    DEFAULT_COLOR,
+    Colors
 };

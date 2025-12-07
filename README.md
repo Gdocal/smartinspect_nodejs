@@ -77,6 +77,23 @@ si.watch('status', 'running');
 si.logValue('config', { debug: true });
 ```
 
+### Colored Logging
+
+Use preset colors for important events (use sparingly):
+
+```javascript
+const { Colors } = require('smartinspect');
+
+si.logColored(Colors.SUCCESS, 'Operation completed successfully');
+si.logColored(Colors.WARNING, 'Rate limit approaching');
+si.logColored(Colors.ERROR, 'Critical failure detected');
+
+// Or custom color: { r, g, b, a }
+si.logColored({ r: 255, g: 100, b: 50, a: 255 }, 'Custom color');
+```
+
+Available presets: `RED`, `GREEN`, `BLUE`, `YELLOW`, `ORANGE`, `PURPLE`, `CYAN`, `PINK`, `WHITE`, `BLACK`, `GRAY`, `SUCCESS`, `WARNING`, `ERROR`, `INFO`
+
 ### Stream Data (High-Frequency Channels)
 
 For metrics, telemetry, and other high-frequency data:

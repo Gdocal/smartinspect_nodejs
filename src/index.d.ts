@@ -131,6 +131,29 @@ export interface Color {
 }
 
 /**
+ * Preset colors for logColored()
+ */
+export const Colors: {
+    // Basic colors
+    readonly RED: Color;
+    readonly GREEN: Color;
+    readonly BLUE: Color;
+    readonly YELLOW: Color;
+    readonly ORANGE: Color;
+    readonly PURPLE: Color;
+    readonly CYAN: Color;
+    readonly PINK: Color;
+    readonly WHITE: Color;
+    readonly BLACK: Color;
+    readonly GRAY: Color;
+    // Semantic colors
+    readonly SUCCESS: Color;
+    readonly WARNING: Color;
+    readonly ERROR: Color;
+    readonly INFO: Color;
+};
+
+/**
  * Async scheduler options
  */
 export interface AsyncOptions {

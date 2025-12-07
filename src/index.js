@@ -39,7 +39,8 @@ const {
     ControlCommandType,
     ProcessFlowType,
     SourceId,
-    GraphicId
+    GraphicId,
+    Colors
 } = require('./enums');
 
 // New scheduler/queue classes
@@ -713,6 +714,7 @@ module.exports = {
     ProcessFlowType,
     SourceId,
     GraphicId,
+    Colors,
 
     // Viewer contexts (for custom viewers)
     ViewerContext,
