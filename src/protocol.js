@@ -65,6 +65,7 @@ class TcpProtocol {
         this._scheduler = null;
         this._failed = false;
         this._reconnectPending = false;
+        this._connectInProgress = null; // Promise for ongoing connection attempt
     }
 
     /**
@@ -158,12 +159,18 @@ class TcpProtocol {
      * @private
      */
     _internalConnect() {
-        return new Promise((resolve, reject) => {
-            if (this.connected) {
-                resolve();
-                return;
-            }
+        // If already connected, resolve immediately
+        if (this.connected) {
+            return Promise.resolve();
+        }
 
+        // If a connection is already in progress, return that promise
+        // This prevents multiple concurrent connection attempts
+        if (this._connectInProgress) {
+            return this._connectInProgress;
+        }
+
+        this._connectInProgress = new Promise((resolve, reject) => {
             this.socket = new net.Socket();
             // Disable Nagle algorithm for immediate packet transmission
             this.socket.setNoDelay(true);
@@ -230,7 +237,11 @@ class TcpProtocol {
             });
 
             this.socket.connect(this.port, this.host);
+        }).finally(() => {
+            this._connectInProgress = null;
         });
+
+        return this._connectInProgress;
     }
 
     /**
@@ -280,12 +291,41 @@ class TcpProtocol {
                     resolve();
                     return;
                 }
-                this.socket.once('close', () => {
+
+                const socket = this.socket;
+                let finished = false;
+
+                const cleanup = () => {
                     this.socket = null;
                     this.connected = false;
                     resolve();
+                };
+
+                // Wait for 'finish' event - all writes have been flushed to kernel
+                socket.once('finish', () => {
+                    finished = true;
+                    // Now destroy the socket - we don't need to wait for server FIN
+                    // SmartInspect protocol is write-only after handshake
+                    socket.destroy();
                 });
-                this.socket.destroy();
+
+                socket.once('close', cleanup);
+
+                socket.once('error', () => {
+                    // On error, just clean up
+                    if (!socket.destroyed) socket.destroy();
+                });
+
+                // Safety timeout in case 'finish' never fires
+                const safetyTimeout = setTimeout(() => {
+                    if (!finished && !socket.destroyed) {
+                        socket.destroy();
+                    }
+                }, 5000);
+                safetyTimeout.unref();
+
+                // Initiate graceful close - flushes write buffer then sends FIN
+                socket.end();
             } else {
                 resolve();
             }
@@ -634,6 +674,7 @@ class PipeProtocol {
         this._scheduler = null;
         this._failed = false;
         this._reconnectPending = false;
+        this._connectInProgress = null; // Promise for ongoing connection attempt
     }
 
     /**
@@ -742,12 +783,18 @@ class PipeProtocol {
      * @private
      */
     _internalConnect() {
-        return new Promise((resolve, reject) => {
-            if (this.connected) {
-                resolve();
-                return;
-            }
+        // If already connected, resolve immediately
+        if (this.connected) {
+            return Promise.resolve();
+        }
 
+        // If a connection is already in progress, return that promise
+        // This prevents multiple concurrent connection attempts
+        if (this._connectInProgress) {
+            return this._connectInProgress;
+        }
+
+        this._connectInProgress = new Promise((resolve, reject) => {
             const pipePath = this.getPipePath();
             this.socket = net.connect(pipePath);
             // Use keepalive instead of inactivity timeout - SmartInspect is write-only after handshake
@@ -809,7 +856,11 @@ class PipeProtocol {
                     this.onDisconnect();
                 }
             });
+        }).finally(() => {
+            this._connectInProgress = null;
         });
+
+        return this._connectInProgress;
     }
 
     /**
@@ -858,12 +909,41 @@ class PipeProtocol {
                     resolve();
                     return;
                 }
-                this.socket.once('close', () => {
+
+                const socket = this.socket;
+                let finished = false;
+
+                const cleanup = () => {
                     this.socket = null;
                     this.connected = false;
                     resolve();
+                };
+
+                // Wait for 'finish' event - all writes have been flushed to kernel
+                socket.once('finish', () => {
+                    finished = true;
+                    // Now destroy the socket - we don't need to wait for server FIN
+                    // SmartInspect protocol is write-only after handshake
+                    socket.destroy();
                 });
-                this.socket.destroy();
+
+                socket.once('close', cleanup);
+
+                socket.once('error', () => {
+                    // On error, just clean up
+                    if (!socket.destroyed) socket.destroy();
+                });
+
+                // Safety timeout in case 'finish' never fires
+                const safetyTimeout = setTimeout(() => {
+                    if (!finished && !socket.destroyed) {
+                        socket.destroy();
+                    }
+                }, 5000);
+                safetyTimeout.unref();
+
+                // Initiate graceful close - flushes write buffer then sends FIN
+                socket.end();
             } else {
                 resolve();
             }
