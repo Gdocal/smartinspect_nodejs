@@ -122,7 +122,7 @@ async function disconnect() {
  * Check if connected
  */
 function isConnected() {
-    return _connected && _instance && _instance.isConnected();
+    return _instance?.enabled && _instance?.isConnected();
 }
 
 /**
@@ -144,7 +144,7 @@ async function ensureConnected() {
  */
 function log(...args) {
     console.log(...args);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logMessage(...args);
     }
 }
@@ -154,7 +154,7 @@ function log(...args) {
  */
 function info(...args) {
     console.info(...args);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logMessage(...args);
     }
 }
@@ -164,7 +164,7 @@ function info(...args) {
  */
 function debug(...args) {
     console.debug(...args);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logDebug(...args);
     }
 }
@@ -174,7 +174,7 @@ function debug(...args) {
  */
 function warn(...args) {
     console.warn(...args);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logWarning(...args);
     }
 }
@@ -184,7 +184,7 @@ function warn(...args) {
  */
 function error(...args) {
     console.error(...args);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logError(...args);
     }
 }
@@ -194,7 +194,7 @@ function error(...args) {
  */
 function table(data, columns) {
     console.table(data, columns);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logTable('Table', data, columns);
     }
 }
@@ -204,7 +204,7 @@ function table(data, columns) {
  */
 function time(label) {
     console.time(label);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().timeStart(label);
     }
 }
@@ -214,7 +214,7 @@ function time(label) {
  */
 function timeEnd(label) {
     console.timeEnd(label);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().timeEnd(label);
     }
 }
@@ -224,7 +224,7 @@ function timeEnd(label) {
  */
 function trace(message) {
     console.trace(message);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logStackTrace(message || 'Trace');
     }
 }
@@ -234,7 +234,7 @@ function trace(message) {
  */
 function assert(condition, ...args) {
     console.assert(condition, ...args);
-    if (_connected && !condition) {
+    if (_instance?.enabled && !condition) {
         const message = args.length > 0 ? getInstance().mainSession.formatArgs(...args) : 'Assertion failed';
         getInstance().logAssert(condition, message);
     }
@@ -245,7 +245,7 @@ function assert(condition, ...args) {
  */
 function clear() {
     console.clear();
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().clearLog();
     }
 }
@@ -258,7 +258,7 @@ function count(label = 'default') {
     const current = (_counts.get(label) || 0) + 1;
     _counts.set(label, current);
     console.count(label);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().incCounter(label);
     }
 }
@@ -269,7 +269,7 @@ function count(label = 'default') {
 function countReset(label = 'default') {
     _counts.delete(label);
     console.countReset(label);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().mainSession.resetCounter(label);
     }
 }
@@ -279,7 +279,7 @@ function countReset(label = 'default') {
  */
 function group(label) {
     console.group(label);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().enterMethod(label);
     }
 }
@@ -289,7 +289,7 @@ function group(label) {
  */
 function groupEnd(label) {
     console.groupEnd();
-    if (_connected && label) {
+    if (_instance?.enabled && label) {
         getInstance().leaveMethod(label);
     }
 }
@@ -301,7 +301,7 @@ function groupEnd(label) {
  * Log an object with detailed inspection
  */
 function logObject(title, obj, includePrivate = false) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logObject(title, obj, includePrivate);
     }
 }
@@ -310,7 +310,7 @@ function logObject(title, obj, includePrivate = false) {
  * Log JSON data
  */
 function logJson(title, data) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logJson(title, data);
     }
 }
@@ -320,7 +320,7 @@ function logJson(title, data) {
  */
 function logException(err, title = null) {
     console.error(err);
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logException(err, title);
     }
 }
@@ -329,7 +329,7 @@ function logException(err, title = null) {
  * Log a value with its name
  */
 function logValue(name, value) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logValue(name, value);
     }
 }
@@ -338,7 +338,7 @@ function logValue(name, value) {
  * Watch a variable (shows in Watches panel)
  */
 function watch(name, value) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().watch(name, value);
     }
 }
@@ -347,7 +347,7 @@ function watch(name, value) {
  * Log binary data as hex dump
  */
 function logBinary(title, buffer) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logBinary(title, buffer);
     }
 }
@@ -356,7 +356,7 @@ function logBinary(title, buffer) {
  * Log HTML content
  */
 function logHtml(title, html) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logHtml(title, html);
     }
 }
@@ -365,7 +365,7 @@ function logHtml(title, html) {
  * Log SQL query
  */
 function logSql(title, sql) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logSql(title, sql);
     }
 }
@@ -374,7 +374,7 @@ function logSql(title, sql) {
  * Log system information
  */
 function logSystem(title = 'System Information') {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logSystem(title);
     }
 }
@@ -383,7 +383,7 @@ function logSystem(title = 'System Information') {
  * Log memory usage
  */
 function logMemory(title = 'Memory Usage') {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logMemory(title);
     }
 }
@@ -392,7 +392,7 @@ function logMemory(title = 'Memory Usage') {
  * Log environment variables
  */
 function logEnvironment(title = 'Environment') {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logEnvironment(title);
     }
 }
@@ -401,7 +401,7 @@ function logEnvironment(title = 'Environment') {
  * Add a checkpoint marker
  */
 function checkpoint(name = null, details = null) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().addCheckpoint(name, details);
     }
 }
@@ -410,7 +410,7 @@ function checkpoint(name = null, details = null) {
  * Enter a method (for method tracking)
  */
 function enterMethod(name) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().enterMethod(name);
     }
 }
@@ -419,7 +419,7 @@ function enterMethod(name) {
  * Leave a method (for method tracking)
  */
 function leaveMethod(name) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().leaveMethod(name);
     }
 }
@@ -483,79 +483,79 @@ function createLogger(nameOrFilename) {
         // Console-compatible methods
         log(...args) {
             console.log(`[${sessionName}]`, ...args);
-            if (_connected) session.logMessage(...args);
+            if (_instance?.enabled) session.logMessage(...args);
         },
         info(...args) {
             console.info(`[${sessionName}]`, ...args);
-            if (_connected) session.logMessage(...args);
+            if (_instance?.enabled) session.logMessage(...args);
         },
         debug(...args) {
             console.debug(`[${sessionName}]`, ...args);
-            if (_connected) session.logDebug(...args);
+            if (_instance?.enabled) session.logDebug(...args);
         },
         warn(...args) {
             console.warn(`[${sessionName}]`, ...args);
-            if (_connected) session.logWarning(...args);
+            if (_instance?.enabled) session.logWarning(...args);
         },
         error(...args) {
             console.error(`[${sessionName}]`, ...args);
-            if (_connected) session.logError(...args);
+            if (_instance?.enabled) session.logError(...args);
         },
         verbose(...args) {
-            if (_connected) session.logVerbose(...args);
+            if (_instance?.enabled) session.logVerbose(...args);
         },
         fatal(...args) {
             console.error(`[${sessionName}] FATAL:`, ...args);
-            if (_connected) session.logFatal(...args);
+            if (_instance?.enabled) session.logFatal(...args);
         },
 
         // Extended methods
         exception(err, title = null) {
             console.error(`[${sessionName}]`, err);
-            if (_connected) session.logException(err, title);
+            if (_instance?.enabled) session.logException(err, title);
         },
         object(title, obj, includePrivate = false) {
-            if (_connected) session.logObject(title, obj, includePrivate);
+            if (_instance?.enabled) session.logObject(title, obj, includePrivate);
         },
         json(title, data) {
-            if (_connected) session.logJson(title, data);
+            if (_instance?.enabled) session.logJson(title, data);
         },
         table(title, data, columns = null) {
-            if (_connected) session.logTable(title, data, columns);
+            if (_instance?.enabled) session.logTable(title, data, columns);
         },
         array(title, arr) {
-            if (_connected) session.logArray(title, arr);
+            if (_instance?.enabled) session.logArray(title, arr);
         },
         sql(title, query) {
-            if (_connected) session.logSql(title, query);
+            if (_instance?.enabled) session.logSql(title, query);
         },
         html(title, content) {
-            if (_connected) session.logHtml(title, content);
+            if (_instance?.enabled) session.logHtml(title, content);
         },
         xml(title, content) {
-            if (_connected) session.logXml(title, content);
+            if (_instance?.enabled) session.logXml(title, content);
         },
         binary(title, buffer) {
-            if (_connected) session.logBinary(title, buffer);
+            if (_instance?.enabled) session.logBinary(title, buffer);
         },
 
         // Variables
         value(name, value) {
-            if (_connected) session.logValue(name, value);
+            if (_instance?.enabled) session.logValue(name, value);
         },
         watch(name, value) {
-            if (_connected) session.watch(name, value);
+            if (_instance?.enabled) session.watch(name, value);
         },
 
         // Method tracking
         enterMethod(name) {
-            if (_connected) session.enterMethod(name);
+            if (_instance?.enabled) session.enterMethod(name);
         },
         leaveMethod(name) {
-            if (_connected) session.leaveMethod(name);
+            if (_instance?.enabled) session.leaveMethod(name);
         },
         trackMethod(name) {
-            if (_connected) return session.trackMethod(name);
+            if (_instance?.enabled) return session.trackMethod(name);
             return () => {}; // No-op if not connected
         },
         wrapMethod(name, fn) {
@@ -565,41 +565,41 @@ function createLogger(nameOrFilename) {
         // Timing
         time(label) {
             console.time(`[${sessionName}] ${label}`);
-            if (_connected) session.timeStart(label);
+            if (_instance?.enabled) session.timeStart(label);
         },
         timeEnd(label) {
             console.timeEnd(`[${sessionName}] ${label}`);
-            if (_connected) session.timeEnd(label);
+            if (_instance?.enabled) session.timeEnd(label);
         },
 
         // Checkpoints & counters
         checkpoint(name = null, details = null) {
-            if (_connected) session.addCheckpoint(name, details);
+            if (_instance?.enabled) session.addCheckpoint(name, details);
         },
         incCounter(name) {
-            if (_connected) session.incCounter(name);
+            if (_instance?.enabled) session.incCounter(name);
         },
         decCounter(name) {
-            if (_connected) session.decCounter(name);
+            if (_instance?.enabled) session.decCounter(name);
         },
 
         // Control
         clear() {
-            if (_connected) session.clearLog();
+            if (_instance?.enabled) session.clearLog();
         },
         separator() {
-            if (_connected) session.logSeparator();
+            if (_instance?.enabled) session.logSeparator();
         },
 
         // Assert
         assert(condition, message) {
             console.assert(condition, `[${sessionName}]`, message);
-            if (_connected) session.logAssert(condition, message);
+            if (_instance?.enabled) session.logAssert(condition, message);
         },
 
         // Stream data
         stream(channel, data, type = null) {
-            if (_connected) session.logStream(channel, data, type);
+            if (_instance?.enabled) session.logStream(channel, data, type);
         }
     };
 }
@@ -623,7 +623,7 @@ function getQueueStats() {
  * Create a colored log message
  */
 function logColored(color, ...args) {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logColored(color, ...args);
     }
 }
@@ -632,7 +632,7 @@ function logColored(color, ...args) {
  * Log a separator line
  */
 function separator() {
-    if (_connected) {
+    if (_instance?.enabled) {
         getInstance().logSeparator();
     }
 }
