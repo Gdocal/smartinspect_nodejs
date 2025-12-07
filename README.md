@@ -84,13 +84,18 @@ Use preset colors for important events (use sparingly):
 ```javascript
 const { Colors } = require('smartinspect');
 
+// Preset colors (recommended)
 si.logColored(Colors.SUCCESS, 'Operation completed successfully');
 si.logColored(Colors.WARNING, 'Rate limit approaching');
-si.logColored('#FF6432', 'Custom hex color');
+si.logColored(Colors.ERROR, 'Critical failure');
+
+// Custom colors - multiple formats supported:
+si.logColored('#FF6432', 'Hex string');
+si.logColored('#F00', 'Short hex (red)');
 si.logColored([255, 100, 50], 'RGB array');
 ```
 
-Available presets: `RED`, `GREEN`, `BLUE`, `YELLOW`, `ORANGE`, `PURPLE`, `CYAN`, `PINK`, `WHITE`, `BLACK`, `GRAY`, `SUCCESS`, `WARNING`, `ERROR`, `INFO`
+**Presets:** `RED`, `GREEN`, `BLUE`, `YELLOW`, `ORANGE`, `PURPLE`, `CYAN`, `PINK`, `WHITE`, `BLACK`, `GRAY`, `SUCCESS`, `WARNING`, `ERROR`, `INFO`
 
 ### Stream Data (High-Frequency Channels)
 
