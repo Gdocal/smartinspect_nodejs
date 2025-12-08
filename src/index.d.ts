@@ -408,7 +408,7 @@ export class SmartInspect {
     deleteSession(name: string): void;
 
     setLevel(level: Level | string): void;
-    setEnabled(enabled: boolean): void;
+    setEnabled(enabled: boolean): Promise<void>;
 
     // Proxy methods (delegate to mainSession)
     logMessage(...args: any[]): void;

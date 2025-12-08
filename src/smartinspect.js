@@ -25,6 +25,7 @@ class SmartInspect extends EventEmitter {
 
         this.protocol = null;
         this.sessions = new Map();
+        this._connectionOptions = null; // Store connection options for reconnect
 
         // Create default session
         this.mainSession = new Session(this, 'Main');
@@ -63,6 +64,9 @@ class SmartInspect extends EventEmitter {
         if (typeof options === 'string') {
             options = this.parseConnectionString(options);
         }
+
+        // Store connection options for reconnect via setEnabled()
+        this._connectionOptions = { ...options };
 
         // Set room if provided in options
         if (options.room) {
@@ -305,10 +309,29 @@ class SmartInspect extends EventEmitter {
     }
 
     /**
-     * Enable/disable logging
+     * Enable/disable logging (like C# SmartInspect.Enabled property)
+     * - When disabled: disconnects from the server
+     * - When enabled: reconnects using stored connection options
      */
-    setEnabled(enabled) {
-        this.enabled = enabled;
+    async setEnabled(enabled) {
+        if (enabled === this.enabled) {
+            return; // No change
+        }
+
+        if (enabled) {
+            // Enable: reconnect if we have stored connection options
+            this.enabled = true;
+            if (this._connectionOptions && !this.isConnected()) {
+                await this.connect(this._connectionOptions);
+            }
+        } else {
+            // Disable: disconnect but keep connection options for later reconnect
+            this.enabled = false;
+            if (this.protocol) {
+                await this.protocol.disconnect();
+                this.protocol = null;
+            }
+        }
     }
 
     // ==================== Convenience proxy methods to main session ====================
