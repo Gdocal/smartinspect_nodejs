@@ -338,10 +338,13 @@ function logValue(name, value) {
 
 /**
  * Watch a variable (shows in Watches panel)
+ * @param {string} name - Watch variable name
+ * @param {any} value - Value to watch
+ * @param {string} [group=''] - Optional group for organizing watches
  */
-function watch(name, value) {
+function watch(name, value, group = '') {
     if (_instance?.enabled) {
-        getInstance().watch(name, value);
+        getInstance().watch(name, value, group);
     }
 }
 
@@ -545,8 +548,8 @@ function createLogger(nameOrFilename) {
         value(name, value) {
             if (_instance?.enabled) session.logValue(name, value);
         },
-        watch(name, value) {
-            if (_instance?.enabled) session.watch(name, value);
+        watch(name, value, group = '') {
+            if (_instance?.enabled) session.watch(name, value, group);
         },
 
         // Method tracking
@@ -600,8 +603,8 @@ function createLogger(nameOrFilename) {
         },
 
         // Stream data
-        stream(channel, data, type = null) {
-            if (_instance?.enabled) session.logStream(channel, data, type);
+        stream(channel, data, type = '', group = '') {
+            if (_instance?.enabled) session.logStream(channel, data, type, group);
         }
     };
 }

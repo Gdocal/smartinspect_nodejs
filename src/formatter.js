@@ -146,25 +146,30 @@ class BinaryFormatter {
 
     /**
      * Compile a Watch packet
+     * Format v2 (with group): [nameLen(4)] [valueLen(4)] [watchType(4)] [timestamp(8)] [groupLen(4)] [name] [value] [group]
+     * Format v1 (legacy): [nameLen(4)] [valueLen(4)] [watchType(4)] [timestamp(8)] [name] [value]
      */
     compileWatch(packet) {
         const nameBytes = this.encodeString(packet.name);
         const valueBytes = this.encodeString(packet.value);
+        const groupBytes = this.encodeString(packet.group || '');
         const timestamp = this.dateToTimestamp(packet.timestamp || new Date());
 
-        // Watch binary format:
-        // [nameLen(4)] [valueLen(4)] [watchType(4)] [timestamp(8)]
-        // [name] [value]
+        // Watch binary format v2 (with group):
+        // [nameLen(4)] [valueLen(4)] [watchType(4)] [timestamp(8)] [groupLen(4)]
+        // [name] [value] [group]
 
         const parts = [
             this.writeInt32(nameBytes ? nameBytes.length : 0),
             this.writeInt32(valueBytes ? valueBytes.length : 0),
             this.writeInt32(packet.watchType),
-            this.writeDouble(timestamp)
+            this.writeDouble(timestamp),
+            this.writeInt32(groupBytes ? groupBytes.length : 0)
         ];
 
         if (nameBytes) parts.push(nameBytes);
         if (valueBytes) parts.push(valueBytes);
+        if (groupBytes) parts.push(groupBytes);
 
         return Buffer.concat(parts);
     }
@@ -218,27 +223,32 @@ class BinaryFormatter {
 
     /**
      * Compile a Stream packet
+     * Format v3 (with group): [channelLen(4)] [dataLen(4)] [typeLen(4)] [timestamp(8)] [groupLen(4)] [channel] [data] [type] [group]
+     * Format v2 (type only): [channelLen(4)] [dataLen(4)] [typeLen(4)] [timestamp(8)] [channel] [data] [type]
      */
     compileStream(packet) {
         const channelBytes = this.encodeString(packet.channel);
         const dataBytes = this.encodeString(packet.data);
         const typeBytes = this.encodeString(packet.streamType || '');
+        const groupBytes = this.encodeString(packet.group || '');
         const timestamp = this.dateToTimestamp(packet.timestamp || new Date());
 
-        // Stream binary format (v2 with type):
-        // [channelLen(4)] [dataLen(4)] [typeLen(4)] [timestamp(8)]
-        // [channel] [data] [type]
+        // Stream binary format v3 (with group):
+        // [channelLen(4)] [dataLen(4)] [typeLen(4)] [timestamp(8)] [groupLen(4)]
+        // [channel] [data] [type] [group]
 
         const parts = [
             this.writeInt32(channelBytes ? channelBytes.length : 0),
             this.writeInt32(dataBytes ? dataBytes.length : 0),
             this.writeInt32(typeBytes ? typeBytes.length : 0),
-            this.writeDouble(timestamp)
+            this.writeDouble(timestamp),
+            this.writeInt32(groupBytes ? groupBytes.length : 0)
         ];
 
         if (channelBytes) parts.push(channelBytes);
         if (dataBytes) parts.push(dataBytes);
         if (typeBytes) parts.push(typeBytes);
+        if (groupBytes) parts.push(groupBytes);
 
         return Buffer.concat(parts);
     }

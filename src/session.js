@@ -115,7 +115,7 @@ class Session {
     /**
      * Send a watch packet
      */
-    sendWatch(level, name, value, watchType) {
+    sendWatch(level, name, value, watchType, group = '') {
         if (!this.isOn(level)) return;
 
         const packet = {
@@ -123,7 +123,8 @@ class Session {
             name,
             value,
             watchType,
-            timestamp: new Date()
+            timestamp: new Date(),
+            group
         };
 
         this.parent.sendPacket(packet);
@@ -682,36 +683,51 @@ class Session {
 
     /**
      * Watch a string value
+     * @param {string} name - Watch variable name
+     * @param {string} value - Value to display
+     * @param {string} [group=''] - Optional group for organizing watches
      */
-    watchString(name, value) {
-        this.sendWatch(this.parent.defaultLevel, name, value, WatchType.String);
+    watchString(name, value, group = '') {
+        this.sendWatch(this.parent.defaultLevel, name, value, WatchType.String, group);
     }
 
     /**
      * Watch an integer value
+     * @param {string} name - Watch variable name
+     * @param {number} value - Integer value
+     * @param {string} [group=''] - Optional group for organizing watches
      */
-    watchInt(name, value) {
-        this.sendWatch(this.parent.defaultLevel, name, String(value), WatchType.Integer);
+    watchInt(name, value, group = '') {
+        this.sendWatch(this.parent.defaultLevel, name, String(value), WatchType.Integer, group);
     }
 
     /**
      * Watch a float value
+     * @param {string} name - Watch variable name
+     * @param {number} value - Float value
+     * @param {string} [group=''] - Optional group for organizing watches
      */
-    watchFloat(name, value) {
-        this.sendWatch(this.parent.defaultLevel, name, String(value), WatchType.Float);
+    watchFloat(name, value, group = '') {
+        this.sendWatch(this.parent.defaultLevel, name, String(value), WatchType.Float, group);
     }
 
     /**
      * Watch a boolean value
+     * @param {string} name - Watch variable name
+     * @param {boolean} value - Boolean value
+     * @param {string} [group=''] - Optional group for organizing watches
      */
-    watchBool(name, value) {
-        this.sendWatch(this.parent.defaultLevel, name, value ? 'True' : 'False', WatchType.Boolean);
+    watchBool(name, value, group = '') {
+        this.sendWatch(this.parent.defaultLevel, name, value ? 'True' : 'False', WatchType.Boolean, group);
     }
 
     /**
-     * Watch any value
+     * Watch any value (auto-detects type)
+     * @param {string} name - Watch variable name
+     * @param {any} value - Value to watch
+     * @param {string} [group=''] - Optional group for organizing watches
      */
-    watch(name, value) {
+    watch(name, value, group = '') {
         const type = typeof value;
         let watchType = WatchType.Object;
         let strValue;
@@ -732,7 +748,7 @@ class Session {
             strValue = this.formatValue(value);
         }
 
-        this.sendWatch(this.parent.defaultLevel, name, strValue, watchType);
+        this.sendWatch(this.parent.defaultLevel, name, strValue, watchType, group);
     }
 
     // ==================== Method Tracking ====================
@@ -883,16 +899,18 @@ class Session {
      * Streams are lightweight, high-frequency data channels for metrics, timeseries, etc.
      * @param {string} channel - Channel name (e.g., 'metrics', 'cpu', 'memory')
      * @param {any} data - Data to send (will be JSON stringified if object)
-     * @param {string} [type] - Optional type identifier for the stream data (e.g., 'json', 'text', 'metric')
+     * @param {string} [type=''] - Optional type identifier for the stream data (e.g., 'json', 'text', 'metric')
+     * @param {string} [group=''] - Optional group for organizing stream channels
      */
-    logStream(channel, data, type = null) {
+    logStream(channel, data, type = '', group = '') {
         if (!this.isOn(this.parent.defaultLevel)) return;
 
         const packet = {
             packetType: PacketType.Stream,
             channel,
             data: typeof data === 'string' ? data : JSON.stringify(data),
-            streamType: type || '',
+            streamType: type,
+            group,
             timestamp: new Date()
         };
 

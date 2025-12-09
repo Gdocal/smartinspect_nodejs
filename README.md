@@ -75,7 +75,15 @@ si.logJson('Data', { key: 'value' });
 si.watch('counter', 42);
 si.watch('status', 'running');
 si.logValue('config', { debug: true });
+
+// With optional group for organizing watches in the viewer
+si.watch('cpu_usage', 45.2, 'Performance');
+si.watch('memory_mb', 2048, 'Performance');
+si.watch('active_users', 123, 'Stats');
+si.watch('queue_size', 5, 'Stats');
 ```
+
+The optional third parameter `group` organizes watches in the web viewer. The viewer displays a Group column and provides filtering by group, making it easy to focus on specific categories of watched values.
 
 ### Colored Logging
 
@@ -111,6 +119,12 @@ si.stream('telemetry', { lat: 51.5, lon: -0.1 });
 si.stream('metrics', { cpu: 45.2, memory: 2048 }, 'json');
 si.stream('events', 'User logged in', 'text');
 si.stream('timeseries', { ts: Date.now(), value: 123.45 }, 'metric');
+
+// With optional group for organizing streams in the viewer
+si.stream('cpu_load', 45.2, 'metric', 'Performance');
+si.stream('memory_used', 2048, 'metric', 'Performance');
+si.stream('api_latency', 23.5, 'metric', 'Network');
+si.stream('request_count', 1500, 'metric', 'Network');
 ```
 
 Streams are lightweight data channels ideal for:
@@ -119,7 +133,11 @@ Streams are lightweight data channels ideal for:
 - Event streams
 - Telemetry data
 
-The optional third parameter `type` is a string identifier displayed in the web viewer's Type column, useful for categorizing stream data (e.g., 'json', 'text', 'metric', 'error').
+**Parameters:**
+- `channel` (required): The stream channel name
+- `data` (required): The data to send (string, object, or any JSON-serializable value)
+- `type` (optional): A string identifier displayed in the Type column (e.g., 'json', 'text', 'metric')
+- `group` (optional): A group name for organizing streams in the viewer (enables filtering by group)
 
 ### Method Tracking
 
