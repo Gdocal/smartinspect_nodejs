@@ -79,7 +79,14 @@ class SmartInspect extends EventEmitter {
             appName: this.appName,
             hostName: this.hostName,
             room: this.room,
-            onError: (err) => this.emit('error', err),
+            // Only emit 'error' if there are listeners - prevents crash when server unavailable
+            // This matches C# behavior where OnError silently ignores if no handler registered
+            onError: (err) => {
+                if (this.listenerCount('error') > 0) {
+                    this.emit('error', err);
+                }
+                // Silently ignore if no listeners (like C#)
+            },
             onConnect: (banner) => this.emit('connect', banner),
             onDisconnect: () => this.emit('disconnect'),
             // Async options
@@ -248,7 +255,10 @@ class SmartInspect extends EventEmitter {
             // Don't check isConnected() here - protocol handles that internally
             this.protocol.writePacket(packet);
         } catch (err) {
-            this.emit('error', err);
+            // Only emit 'error' if there are listeners - prevents crash
+            if (this.listenerCount('error') > 0) {
+                this.emit('error', err);
+            }
         }
     }
 
